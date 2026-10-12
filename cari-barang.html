@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cari Barang | Lost &amp; Found Kampus</title>
+</head>
+<body>
+<header>
+  <div class="brand"><a href="index.html"><img src="assets/images/logo.svg" alt="" width="36" height="36"> <strong>Lost &amp; Found Kampus</strong></a></div>
+  <nav aria-label="Navigasi utama"><ul>
+      <li><a href="index.html">Beranda</a></li>
+      <li><a href="cari-barang.html" aria-current="page">Cari Barang</a></li>
+      <li><a href="lapor-barang.html">Lapor Barang</a></li>
+      <li><a href="lacak-laporan.html">Lacak Laporan</a></li>
+      <li><a href="bantuan.html">Bantuan</a></li>
+      <li><a href="masuk.html">Masuk</a></li>
+  </ul></nav>
+</header>
+<main id="konten">
+<section class="page-heading"><p>KATALOG BARANG</p><h1>Cari Barang Hilang</h1><p>Gunakan kata kunci atau telusuri barang yang baru ditemukan.</p></section>
+<form action="cari-barang.html" method="get" class="search-form"><label for="q">Nama barang atau kata kunci</label><input id="q" name="q" type="search" placeholder="Misalnya dompet cokelat"><label for="lokasi">Lokasi</label><select id="lokasi" name="lokasi"><option value="">Semua lokasi</option><option>Gedung A</option><option>Parkiran Utama</option><option>Perpustakaan</option><option>Gedung C</option></select><button type="submit">Cari</button></form>
+<section><h2>Barang temuan terbaru</h2><div class="item-grid">      <article class="item-card">
+        <img src="assets/images/dompet-cokelat.webp" alt="Foto Dompet Kulit Cokelat" width="289" height="170">
+        <h3>Dompet Kulit Cokelat</h3><p>Gedung A · 08.35</p><p>Dompet kulit berwarna cokelat ditemukan di sekitar Gedung A.</p>
+        <a href="detail-barang.html?barang=1">Lihat Detail</a>
+      </article>
+      <article class="item-card">
+        <img src="assets/images/kunci-motor.webp" alt="Foto Kunci Motor & Gantungan" width="289" height="170">
+        <h3>Kunci Motor & Gantungan</h3><p>Parkiran Utama · 09.20</p><p>Satu set kunci motor dengan gantungan ditemukan di parkiran utama.</p>
+        <a href="detail-barang.html?barang=2">Lihat Detail</a>
+      </article>
+      <article class="item-card">
+        <img src="assets/images/botol-hijau.webp" alt="Foto Botol Minum Hijau" width="289" height="170">
+        <h3>Botol Minum Hijau</h3><p>Perpustakaan · 10.05</p><p>Botol minum warna hijau ditemukan di perpustakaan.</p>
+        <a href="detail-barang.html?barang=3">Lihat Detail</a>
+      </article>
+      <article class="item-card">
+        <img src="assets/images/kalkulator.webp" alt="Foto Kalkulator Scientific" width="289" height="170">
+        <h3>Kalkulator Scientific</h3><p>Gedung C · 11.40</p><p>Kalkulator scientific ditemukan di Gedung C.</p>
+        <a href="detail-barang.html?barang=4">Lihat Detail</a>
+      </article></div></section>
+<p>Belum menemukan barangmu? <a href="lapor-barang.html">Buat laporan barang hilang</a>.</p>
+</main>
+<footer>
+  <section><h2>Lost &amp; Found Kampus</h2><p>Layanan informasi barang hilang dan temuan untuk warga kampus.</p></section>
+  <section><h2>Bantuan</h2><ul><li><a href="bantuan.html">Panduan klaim</a></li><li><a href="bantuan.html#faq">FAQ layanan</a></li><li><a href="bantuan.html#privasi">Kebijakan privasi</a></li></ul></section>
+  <section><h2>Customer Service</h2><p><a href="mailto:lostfound@example.edu">lostfound@example.edu</a></p></section>
+  <section><h2>Kontak Satpam</h2><p>Hubungi pos keamanan kampus untuk verifikasi langsung.</p></section>
+</footer>
+</body>
+</html>

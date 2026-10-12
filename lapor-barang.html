@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lapor Barang | Lost &amp; Found Kampus</title>
+</head>
+<body>
+<header>
+  <div class="brand"><a href="index.html"><img src="assets/images/logo.svg" alt="" width="36" height="36"> <strong>Lost &amp; Found Kampus</strong></a></div>
+  <nav aria-label="Navigasi utama"><ul>
+      <li><a href="index.html">Beranda</a></li>
+      <li><a href="cari-barang.html">Cari Barang</a></li>
+      <li><a href="lapor-barang.html" aria-current="page">Lapor Barang</a></li>
+      <li><a href="lacak-laporan.html">Lacak Laporan</a></li>
+      <li><a href="bantuan.html">Bantuan</a></li>
+      <li><a href="masuk.html">Masuk</a></li>
+  </ul></nav>
+</header>
+<main id="konten">
+<section class="page-heading"><p>FORMULIR</p><h1>Laporkan Barang Hilang atau Temuan</h1><p>Isi informasi yang kamu ketahui. Petugas dapat menghubungi pelapor untuk verifikasi.</p></section>
+<form action="sukses-laporan.html" method="get" class="report-form"><fieldset><legend>Informasi laporan</legend>
+<label for="jenis">Jenis laporan</label><select id="jenis" name="jenis" required><option value="">Pilih jenis laporan</option><option value="hilang">Barang hilang</option><option value="temuan">Barang ditemukan</option></select>
+<label for="nama-barang">Nama barang</label><input id="nama-barang" name="barang" type="text" required placeholder="Contoh: dompet cokelat">
+<label for="kategori">Kategori</label><select id="kategori" name="kategori" required><option value="">Pilih kategori</option><option>Elektronik</option><option>Aksesori</option><option>Dokumen</option><option>Botol atau wadah</option><option>Lainnya</option></select>
+<label for="lokasi-laporan">Lokasi hilang/ditemukan</label><input id="lokasi-laporan" name="lokasi" type="text" required placeholder="Gedung atau area kampus">
+<label for="tanggal">Tanggal kejadian</label><input id="tanggal" name="tanggal" type="date" required>
+<label for="waktu">Perkiraan waktu</label><input id="waktu" name="waktu" type="time">
+<label for="deskripsi">Deskripsi dan ciri khusus</label><textarea id="deskripsi" name="deskripsi" rows="4" required placeholder="Jelaskan ciri barang secukupnya"></textarea>
+</fieldset><fieldset><legend>Kontak pelapor</legend><label for="nama-pelapor">Nama lengkap</label><input id="nama-pelapor" name="nama-pelapor" type="text" required><label for="email">Email kampus</label><input id="email" name="email" type="email" required><label for="telepon">Nomor telepon (opsional)</label><input id="telepon" name="telepon" type="tel"><p><input id="setuju" name="setuju" type="checkbox" required> <label for="setuju">Saya menyatakan informasi di atas benar dan bersedia dihubungi untuk verifikasi.</label></p></fieldset><button type="submit">Kirim Laporan</button></form>
+</main>
+<footer>
+  <section><h2>Lost &amp; Found Kampus</h2><p>Layanan informasi barang hilang dan temuan untuk warga kampus.</p></section>
+  <section><h2>Bantuan</h2><ul><li><a href="bantuan.html">Panduan klaim</a></li><li><a href="bantuan.html#faq">FAQ layanan</a></li><li><a href="bantuan.html#privasi">Kebijakan privasi</a></li></ul></section>
+  <section><h2>Customer Service</h2><p><a href="mailto:lostfound@example.edu">lostfound@example.edu</a></p></section>
+  <section><h2>Kontak Satpam</h2><p>Hubungi pos keamanan kampus untuk verifikasi langsung.</p></section>
+</footer>
+</body>
+</html>
