@@ -1,11 +1,33 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Search, PlusCircle, Clock, ShieldCheck, User } from 'lucide-react';
+import { Search, ShieldCheck, LogOut, Settings } from 'lucide-react';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { createClient } from '@/lib/supabase/client';
 
 export default function Navbar() {
   const pathname = usePathname();
+  const [profile, setProfile] = useState<{ name: string; initials: string } | null>(null);
+  const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    const supabase = createClient();
+    const loadUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
+      setProfile(name ? { name, initials: name.slice(0, 2).toUpperCase() } : null);
+      setAuthReady(true);
+    };
+
+    loadUser();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => loadUser());
+    return () => subscription.unsubscribe();
+  }, []);
 
   const isCurrent = (path: string) => {
     if (path === '/' && pathname === '/') return true;
@@ -15,8 +37,18 @@ export default function Navbar() {
 
   const isAuthPage = pathname === '/masuk' || pathname === '/daftar';
 
+  const handleLogout = async () => {
+    if (isSupabaseConfigured) {
+      await createClient().auth.signOut();
+    } else {
+      window.localStorage.removeItem('campus-lnf-user');
+    }
+    setMenuOpen(false);
+    window.location.assign('/masuk');
+  };
+
   return (
-    <header className="macos-header">
+    <header className="site-header">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         {/* Left: Brand */}
@@ -37,7 +69,7 @@ export default function Navbar() {
         </div>
 
         {/* Center: Navigation Links */}
-        {!isAuthPage && (
+        {!isAuthPage && authReady && (
           <nav aria-label="Navigasi Utama" className="hidden md:flex items-center gap-1 bg-black/4 p-1 rounded-xl border border-black/5">
             <Link
               href="/"
@@ -69,7 +101,7 @@ export default function Navbar() {
             >
               Cari Barang
             </Link>
-            <Link
+            {profile && <Link
               href="/lapor"
               className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
                 isCurrent('/lapor')
@@ -78,8 +110,8 @@ export default function Navbar() {
               }`}
             >
               Lapor Barang
-            </Link>
-            <Link
+            </Link>}
+            {profile && <Link
               href="/lacak"
               className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
                 isCurrent('/lacak')
@@ -88,8 +120,8 @@ export default function Navbar() {
               }`}
             >
               Lacak
-            </Link>
-            <Link
+            </Link>}
+            {profile && <Link
               href="/laporan-saya"
               className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
                 isCurrent('/laporan-saya')
@@ -98,7 +130,7 @@ export default function Navbar() {
               }`}
             >
               Laporan Saya
-            </Link>
+            </Link>}
           </nav>
         )}
 
@@ -113,19 +145,33 @@ export default function Navbar() {
             <Search className="w-4.5 h-4.5" />
           </Link>
 
-          {/* Student Profile Pill from Figma */}
-          <Link
-            href="/dashboard"
+          <div className="relative">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
             className="flex items-center gap-2.5 p-1 pl-2.5 pr-3 rounded-full bg-white border border-slate-200/80 shadow-xs hover:shadow-sm hover:border-slate-300 transition-all"
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
           >
             <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs">
-              AP
+              {profile?.initials || '?'}
             </div>
             <div className="hidden sm:flex flex-col text-left">
-              <span className="text-xs font-semibold text-slate-900 leading-tight">Alya Putri</span>
-              <span className="text-[10px] text-slate-500 leading-none">Mahasiswa</span>
+              <span className="text-xs font-semibold text-slate-900 leading-tight">{profile?.name || 'Masuk'}</span>
+              <span className="text-[10px] text-slate-500 leading-none">{profile ? 'Pengguna kampus' : 'Akun pengguna'}</span>
             </div>
-          </Link>
+          </button>
+          {menuOpen && (
+            <div role="menu" className="absolute right-0 top-12 z-50 w-48 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+              {profile ? (
+                <>
+                  <Link href="/pengaturan" role="menuitem" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"><Settings className="w-4 h-4" /> Pengaturan akun</Link>
+                  <button type="button" role="menuitem" onClick={handleLogout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-rose-700 hover:bg-rose-50"><LogOut className="w-4 h-4" /> Keluar</button>
+                </>
+              ) : <Link href="/masuk" role="menuitem" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-xs text-slate-700 hover:bg-slate-50">Masuk ke akun</Link>}
+            </div>
+          )}
+          </div>
         </div>
 
       </div>

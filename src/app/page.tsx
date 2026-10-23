@@ -1,15 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Search, PlusCircle, ArrowRight, ShieldCheck, Clock, MapPin, Sparkles } from 'lucide-react';
-import { ITEMS_DATA } from '@/data/items';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { fetchCatalogItems, type CatalogItem } from '@/lib/supabase/items';
 
 export default function HomePage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const [recentItems, setRecentItems] = useState<CatalogItem[]>([]);
+  const [catalogError, setCatalogError] = useState('');
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    fetchCatalogItems({ withinHours: 24 })
+      .then((items) => setRecentItems(items.slice(0, 4)))
+      .catch(() => setCatalogError('Katalog belum dapat dimuat. Coba lagi nanti.'));
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,8 +30,6 @@ export default function HomePage() {
       router.push('/cari');
     }
   };
-
-  const recentItems = ITEMS_DATA.slice(0, 4);
 
   return (
     <div className="space-y-16 pb-20">
@@ -48,7 +57,7 @@ export default function HomePage() {
               Campus L&amp;F membantu seluruh warga kampus mencari, melaporkan, dan mengambil barang dengan proses verifikasi yang aman serta transparan.
             </p>
 
-            {/* Integrated macOS Style Search Bar */}
+            {/* Integrated Search Bar */}
             <form onSubmit={handleSearch} className="max-w-xl">
               <div className="relative flex items-center p-1.5 bg-white rounded-2xl border border-slate-200/90 shadow-md focus-within:ring-3 focus-within:ring-sky-500/20 focus-within:border-sky-500 transition-all">
                 <Search className="w-5 h-5 text-slate-400 ml-3 shrink-0" />
@@ -112,18 +121,6 @@ export default function HomePage() {
                   <span>Posko terintegrasi · aktif 08.00–21.00</span>
                 </div>
 
-                {/* Bottom Metric Card: 87% Klaim */}
-                <div className="absolute bottom-3 left-3 p-3.5 rounded-2xl bg-white/95 backdrop-blur-md border border-white/80 shadow-xl max-w-[210px]">
-                  <span className="text-2xl font-black text-sky-600 tracking-tight block leading-none">
-                    87%
-                  </span>
-                  <span className="text-xs font-semibold text-slate-700 mt-1 block">
-                    klaim selesai dalam 48 jam
-                  </span>
-                  <span className="text-[10px] text-slate-400 mt-0.5 block">
-                    Verifikasi terpadu satpam &amp; sistem
-                  </span>
-                </div>
               </div>
 
             </div>
@@ -155,21 +152,25 @@ export default function HomePage() {
         </div>
 
         {/* 4 Cards Grid (Apple Aesthetics) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {recentItems.map((item) => (
+        {catalogError && <p role="alert" className="text-sm text-rose-700">{catalogError}</p>}
+        {recentItems.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {recentItems.map((item) => (
             <article
               key={item.id}
               className="apple-card group flex flex-col overflow-hidden"
             >
               {/* Card Image */}
               <div className="relative h-44 w-full bg-slate-100 overflow-hidden">
-                <Image
-                  src={item.image}
-                  alt={item.title}
-                  fill
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
-                />
+                {item.image ? (
+                  <Image
+                    src={item.image}
+                    alt={item.title}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : <div className="h-full w-full bg-slate-200" aria-label="Foto belum tersedia" />}
                 <span className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/90 backdrop-blur-md text-slate-800 shadow-xs border border-white/60 uppercase">
                   {item.categoryTag}
                 </span>
@@ -203,8 +204,13 @@ export default function HomePage() {
                 </div>
               </div>
             </article>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : !catalogError && (
+          <div className="apple-card p-8 text-center text-sm text-slate-500">
+            Belum ada barang temuan yang dipublikasikan.
+          </div>
+        )}
 
       </section>
 

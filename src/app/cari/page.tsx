@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Search, MapPin, Clock, Filter, RotateCcw, AlertCircle } from 'lucide-react';
-import { ITEMS_DATA, Item } from '@/data/items';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { fetchCatalogItems, type CatalogItem } from '@/lib/supabase/items';
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -16,6 +17,21 @@ function SearchContent() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('newest');
+  const [items, setItems] = useState<CatalogItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState('');
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setIsLoading(false);
+      return;
+    }
+
+    fetchCatalogItems()
+      .then(setItems)
+      .catch(() => setCatalogError('Katalog belum dapat dimuat. Coba lagi nanti.'))
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const categories = ['Elektronik', 'Dokumen', 'Aksesoris', 'Tas & Pakaian', 'Lainnya'];
   const locations = ['Gedung A', 'Gedung B', 'Gedung C', 'Perpustakaan', 'Kantin Barat', 'Parkiran Utama'];
@@ -40,7 +56,7 @@ function SearchContent() {
   };
 
   const filteredItems = useMemo(() => {
-    return ITEMS_DATA.filter(item => {
+    return items.filter(item => {
       // Query filter
       const q = query.toLowerCase().trim();
       const matchQuery = !q ||
@@ -60,7 +76,7 @@ function SearchContent() {
 
       return matchQuery && matchSelectLoc && matchCategory && matchLocation;
     });
-  }, [query, selectedLocation, selectedCategories, selectedLocations]);
+  }, [items, query, selectedLocation, selectedCategories, selectedLocations]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -189,7 +205,7 @@ function SearchContent() {
             <input
               type="text"
               readOnly
-              value="28 Sep - 04 Okt 2026"
+              value="Gunakan filter lokasi dan kategori"
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-600"
             />
           </div>
@@ -230,7 +246,11 @@ function SearchContent() {
           </div>
 
           {/* Cards Grid */}
-          {filteredItems.length > 0 ? (
+          {isLoading ? (
+            <div className="apple-card p-12 text-center text-sm text-slate-500">Memuat katalog...</div>
+          ) : catalogError ? (
+            <div role="alert" className="apple-card p-12 text-center text-sm text-rose-700">{catalogError}</div>
+          ) : filteredItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredItems.map(item => (
                 <article
@@ -238,13 +258,15 @@ function SearchContent() {
                   className="apple-card group flex flex-col overflow-hidden bg-white"
                 >
                   <div className="relative h-44 w-full bg-slate-100 overflow-hidden">
-                    <Image
-                      src={item.image}
-                      alt={item.title}
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
+                    {item.image ? (
+                      <Image
+                        src={item.image}
+                        alt={item.title}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : <div className="h-full w-full bg-slate-200" aria-label="Foto belum tersedia" />}
                     <span className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/95 backdrop-blur-md text-slate-800 shadow-xs uppercase">
                       {item.categoryTag}
                     </span>

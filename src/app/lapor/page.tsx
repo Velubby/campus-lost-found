@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FileText, ShieldAlert, Upload, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { createClient } from '@/lib/supabase/client';
 
 export default function ReportPage() {
   const router = useRouter();
@@ -10,6 +12,10 @@ export default function ReportPage() {
   const [reportType, setReportType] = useState<'hilang' | 'temuan'>('hilang');
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [submittedReportCode, setSubmittedReportCode] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [authChecked, setAuthChecked] = useState(!isSupabaseConfigured);
 
   const [formData, setFormData] = useState({
     namaBarang: '',
@@ -19,14 +25,89 @@ export default function ReportPage() {
     waktu: '10:00',
     deskripsiPublik: '',
     ciriRahasia: '',
-    namaPelapor: 'Alya Putri',
-    email: 'alya.putri@mahasiswa.kampus.ac.id',
-    telepon: '081234567890',
+    namaPelapor: '',
+    email: '',
+    telepon: '',
     setuju: true
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    const requestedType = new URLSearchParams(window.location.search).get('type');
+    if (requestedType === 'temuan') setReportType('temuan');
+
+    createClient().auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
+        router.replace('/masuk?next=/lapor');
+        setAuthChecked(true);
+        return;
+      }
+      setFormData((current) => ({
+        ...current,
+        namaPelapor: user.user_metadata?.full_name || current.namaPelapor,
+        email: user.email || current.email,
+      }));
+      createClient().from('profiles').select('phone').eq('id', user.id).maybeSingle().then(({ data: profile }) => {
+        setFormData((current) => ({ ...current, telepon: profile?.phone || '' }));
+        setAuthChecked(true);
+      });
+    });
+  }, []);
+
+  if (!authChecked) {
+    return <div className="max-w-3xl mx-auto px-4 py-16 text-center text-slate-500">Memeriksa sesi akun...</div>;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const reportCode = `LNF-${new Date().toISOString().slice(2, 10).replaceAll('-', '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    if (isSupabaseConfigured) {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        setSubmitError('Silakan masuk terlebih dahulu sebelum mengirim laporan.');
+        return;
+      }
+
+      let imageUrl: string | null = null;
+      if (imageFile) {
+        const extension = imageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const imagePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
+        const { error: uploadError } = await supabase.storage.from('item-images').upload(imagePath, imageFile, { contentType: imageFile.type, upsert: false });
+        if (uploadError) {
+          setSubmitError('Foto belum dapat diunggah. Pastikan bucket item-images sudah dibuat.');
+          return;
+        }
+        imageUrl = supabase.storage.from('item-images').getPublicUrl(imagePath).data.publicUrl;
+      }
+
+      const { error } = await supabase.from('reports').insert({
+        report_code: reportCode,
+        user_id: user.id,
+        type: reportType,
+        item_title: formData.namaBarang,
+        category: formData.kategori,
+        location: formData.lokasi,
+        incident_at: `${formData.tanggal}T${formData.waktu}:00`,
+        public_description: formData.deskripsiPublik,
+        private_description: formData.ciriRahasia,
+        image_url: imageUrl,
+        contact_phone: formData.telepon,
+      });
+
+      if (error) {
+        setSubmitError('Laporan belum dapat disimpan. Periksa koneksi lalu coba lagi.');
+        return;
+      }
+
+    }
+
+    setSubmittedReportCode(reportCode);
+    setSubmitError('');
     setIsSuccess(true);
   };
 
@@ -46,7 +127,7 @@ export default function ReportPage() {
         </p>
       </div>
 
-      {/* macOS Type Switcher */}
+      {/* Type switcher */}
       <div className="flex justify-center">
         <div className="segmented-control p-1 bg-slate-200/70 rounded-2xl">
           <button
@@ -94,7 +175,7 @@ export default function ReportPage() {
                 Laporan Berhasil Disimpan
               </span>
               <h2 className="text-2xl font-extrabold text-[#123356]">
-                Nomor Tiket: #LNF-261023-0214
+                Nomor Tiket: {submittedReportCode || 'Menunggu kode laporan'}
               </h2>
               <p className="text-xs text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">
                 Terima kasih, laporan Anda telah diterima. Sistem sedang mencocokkan ciri barang dengan laporan temuan yang ada.
@@ -118,6 +199,11 @@ export default function ReportPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
+            {submitError && (
+              <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                {submitError}
+              </div>
+            )}
             
             {/* Step 1: Detail Barang */}
             {currentStep === 1 && (
@@ -135,7 +221,7 @@ export default function ReportPage() {
                     placeholder="Contoh: Dompet Kulit Cokelat, Kunci Motor Honda..."
                     value={formData.namaBarang}
                     onChange={(e) => setFormData({ ...formData, namaBarang: e.target.value })}
-                    className="macos-input w-full"
+                       className="form-input w-full"
                   />
                 </div>
 
@@ -145,7 +231,7 @@ export default function ReportPage() {
                     <select
                       value={formData.kategori}
                       onChange={(e) => setFormData({ ...formData, kategori: e.target.value as any })}
-                      className="macos-input w-full"
+                      className="form-input w-full"
                     >
                       <option>Elektronik</option>
                       <option>Dokumen</option>
@@ -163,7 +249,7 @@ export default function ReportPage() {
                       placeholder="Gedung A, Perpustakaan, Kantin..."
                       value={formData.lokasi}
                       onChange={(e) => setFormData({ ...formData, lokasi: e.target.value })}
-                      className="macos-input w-full"
+                      className="form-input w-full"
                     />
                   </div>
                 </div>
@@ -176,7 +262,7 @@ export default function ReportPage() {
                       required
                       value={formData.tanggal}
                       onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
-                      className="macos-input w-full"
+                      className="form-input w-full"
                     />
                   </div>
 
@@ -186,7 +272,7 @@ export default function ReportPage() {
                       type="time"
                       value={formData.waktu}
                       onChange={(e) => setFormData({ ...formData, waktu: e.target.value })}
-                      className="macos-input w-full"
+                      className="form-input w-full"
                     />
                   </div>
                 </div>
@@ -228,7 +314,7 @@ export default function ReportPage() {
                     placeholder="Sebutkan warna utama, bentuk, dan kondisi luar yang wajar diketahui umum..."
                     value={formData.deskripsiPublik}
                     onChange={(e) => setFormData({ ...formData, deskripsiPublik: e.target.value })}
-                    className="macos-input w-full"
+                    className="form-input w-full"
                   />
                 </div>
 
@@ -247,18 +333,26 @@ export default function ReportPage() {
                     placeholder="Contoh: ada stiker di bagian bawah, foto di dalam dompet, wallpaper kunci layar..."
                     value={formData.ciriRahasia}
                     onChange={(e) => setFormData({ ...formData, ciriRahasia: e.target.value })}
-                    className="macos-input w-full"
+                    className="form-input w-full"
                   />
                 </div>
 
-                {/* Upload Foto Mockup */}
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700 block">Foto Barang (Opsional)</label>
-                  <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:bg-slate-50 cursor-pointer transition-colors">
+                  <label className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:bg-slate-50 cursor-pointer transition-colors block">
                     <Upload className="w-6 h-6 text-slate-400 mx-auto mb-2" />
-                    <span className="text-xs font-semibold text-slate-700 block">Pilih file atau seret foto ke sini</span>
+                    <span className="text-xs font-semibold text-slate-700 block">{imageFile ? imageFile.name : 'Pilih foto barang'}</span>
                     <span className="text-[10px] text-slate-400 mt-0.5 block">Format PNG, JPG, atau WEBP maks 5MB</span>
-                  </div>
+                    <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => {
+                      const file = event.target.files?.[0] || null;
+                      if (file && file.size > 5 * 1024 * 1024) {
+                        setSubmitError('Ukuran foto maksimal 5MB.');
+                        return;
+                      }
+                      setSubmitError('');
+                      setImageFile(file);
+                    }} />
+                  </label>
                 </div>
 
                 <div className="pt-4 flex justify-between">
@@ -298,7 +392,7 @@ export default function ReportPage() {
                       required
                       value={formData.namaPelapor}
                       onChange={(e) => setFormData({ ...formData, namaPelapor: e.target.value })}
-                      className="macos-input w-full"
+                      className="form-input w-full"
                     />
                   </div>
 
@@ -309,7 +403,7 @@ export default function ReportPage() {
                       required
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="macos-input w-full"
+                      className="form-input w-full"
                     />
                   </div>
                 </div>
@@ -321,7 +415,7 @@ export default function ReportPage() {
                     required
                     value={formData.telepon}
                     onChange={(e) => setFormData({ ...formData, telepon: e.target.value })}
-                    className="macos-input w-full"
+                    className="form-input w-full"
                   />
                 </div>
 

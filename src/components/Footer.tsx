@@ -1,7 +1,19 @@
+ 'use client';
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { ShieldCheck, Mail, Phone, MapPin, Clock } from 'lucide-react';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { createClient } from '@/lib/supabase/client';
 
 export default function Footer() {
+  const [isAuthenticated, setIsAuthenticated] = useState(!isSupabaseConfigured);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    createClient().auth.getUser().then(({ data: { user } }) => setIsAuthenticated(Boolean(user)));
+  }, []);
+
   return (
     <footer className="campus-footer py-14 px-4 sm:px-6 lg:px-8 mt-auto">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
@@ -41,11 +53,11 @@ export default function Footer() {
                 Kebijakan privasi data mahasiswa
               </Link>
             </li>
-            <li>
+            {isAuthenticated && <li>
               <Link href="/lacak" className="hover:text-white transition-colors">
                 Lacak status laporan
               </Link>
-            </li>
+            </li>}
           </ul>
         </div>
 

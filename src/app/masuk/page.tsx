@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,9 +14,28 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSupabaseConfigured) {
+      const { error: signInError } = await createClient().auth.signInWithPassword({ email, password });
+      if (signInError) {
+        setError('Email atau password belum sesuai.');
+        return;
+      }
+    } else {
+      const savedUser = window.localStorage.getItem('campus-lnf-user');
+      const user = savedUser ? JSON.parse(savedUser) as { email: string; password: string } : null;
+      const isDemoAccount = email === 'alya.putri@mahasiswa.kampus.ac.id' && password === 'kampus123';
+
+      if (!isDemoAccount && (!user || user.email !== email || user.password !== password)) {
+        setError('Email atau password belum sesuai. Gunakan akun terdaftar atau akun demo.');
+        return;
+      }
+    }
+
+    setError('');
     router.push('/dashboard');
   };
 
@@ -63,13 +84,18 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4" noValidate>
+            {error && (
+              <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                {error}
+              </div>
+            )}
 
             {/* Email field */}
             <div className="space-y-1.5">
               <label htmlFor="email" className="text-xs font-bold text-slate-700 block">
                 Email Institusi
               </label>
-              <div className="flex items-center gap-2 macos-input w-full group focus-within:[box-shadow:0_0_0_3px_rgba(0,113,227,0.2)] focus-within:border-sky-500 transition-all">
+              <div className="flex items-center gap-2 form-input w-full group focus-within:[box-shadow:0_0_0_3px_rgba(0,113,227,0.2)] focus-within:border-sky-500 transition-all">
                 <Mail className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
                 <input
                   id="email"
@@ -90,11 +116,11 @@ export default function LoginPage() {
                 <label htmlFor="password" className="text-xs font-bold text-slate-700 block">
                   Password
                 </label>
-                <Link href="#" className="text-[11px] text-sky-700 hover:underline">
+                <Link href="/bantuan#faq" className="text-[11px] text-sky-700 hover:underline">
                   Lupa password?
                 </Link>
               </div>
-              <div className="flex items-center gap-2 macos-input w-full focus-within:[box-shadow:0_0_0_3px_rgba(0,113,227,0.2)] focus-within:border-sky-500 transition-all">
+              <div className="flex items-center gap-2 form-input w-full focus-within:[box-shadow:0_0_0_3px_rgba(0,113,227,0.2)] focus-within:border-sky-500 transition-all">
                 <Lock className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
                 <input
                   id="password"
@@ -143,8 +169,8 @@ export default function LoginPage() {
 
           <p className="text-xs text-center text-slate-500">
             Belum punya akun?{' '}
-            <Link href="/dashboard" className="font-bold text-sky-700 hover:underline">
-              Masuk sebagai Tamu / Demo
+            <Link href="/daftar" className="font-bold text-sky-700 hover:underline">
+              Buat akun baru
             </Link>
           </p>
 
