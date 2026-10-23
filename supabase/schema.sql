@@ -112,6 +112,7 @@ drop policy if exists "Users can update their reports" on public.reports;
 drop policy if exists "Users can delete their draft reports" on public.reports;
 drop policy if exists "Users can view their claims" on public.claims;
 drop policy if exists "Users can create their claims" on public.claims;
+drop policy if exists "Report and item owners can view claims" on public.claims;
 drop policy if exists "Users can view events for their reports" on public.report_events;
 
 create policy "Profiles are visible to their owner"
@@ -156,8 +157,20 @@ create policy "Users can delete their item images"
   on storage.objects for delete to authenticated
   using (bucket_id = 'item-images' and owner_id = auth.uid()::text);
 
-create policy "Users can view their claims"
-  on public.claims for select using (auth.uid() = user_id);
+create policy "Report and item owners can view claims"
+  on public.claims for select using (
+    auth.uid() = user_id
+    or exists (
+      select 1 from public.items
+      where items.id = claims.item_id
+        and items.created_by = auth.uid()
+    )
+    or exists (
+      select 1 from public.reports
+      where reports.id = claims.report_id
+        and reports.user_id = auth.uid()
+    )
+  );
 create policy "Users can create their claims"
   on public.claims for insert with check (auth.uid() = user_id);
 
@@ -222,6 +235,255 @@ drop trigger if exists on_found_report_created on public.reports;
 create trigger on_found_report_created
 after insert on public.reports
 for each row execute procedure public.publish_found_report();
+
+create or replace function public.record_report_created()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.report_events (report_id, title, description, created_by)
+  values (new.id, 'Laporan dibuat', 'Laporan berhasil diterima sistem.', new.user_id);
+  return new;
+end;
+$$;
+
+drop trigger if exists on_report_created_event on public.reports;
+create trigger on_report_created_event
+after insert on public.reports
+for each row execute procedure public.record_report_created();
+
+create or replace function public.record_report_status_changed()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if old.status is distinct from new.status then
+    insert into public.report_events (report_id, title, description, created_by)
+    values (
+      new.id,
+      'Status laporan diperbarui',
+      'Status laporan berubah menjadi ' || new.status || '.',
+      new.user_id
+    );
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_report_status_changed on public.reports;
+create trigger on_report_status_changed
+after update on public.reports
+for each row execute procedure public.record_report_status_changed();
+
+insert into public.report_events (report_id, title, description, created_by)
+select report.id, 'Laporan dibuat', 'Laporan berhasil diterima sistem.', report.user_id
+from public.reports report
+where not exists (
+  select 1 from public.report_events event
+  where event.report_id = report.id
+    and event.title = 'Laporan dibuat'
+);
+
+create or replace function public.handle_claim_submitted()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  found_report_id uuid;
+begin
+  update public.items
+  set status = 'Menunggu Verifikasi'
+  where id = new.item_id;
+
+  select source_report_id
+    into found_report_id
+  from public.items
+  where id = new.item_id;
+
+  if found_report_id is not null then
+    update public.reports
+    set status = 'klaim', updated_at = now()
+    where id = found_report_id;
+
+    insert into public.report_events (report_id, title, description, created_by)
+    values (
+      found_report_id,
+      'Klaim diajukan',
+      'Ada pengguna yang mengajukan klaim kepemilikan. Petugas perlu memverifikasi ciri privatnya.',
+      new.user_id
+    );
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_claim_submitted on public.claims;
+create trigger on_claim_submitted
+after insert on public.claims
+for each row execute procedure public.handle_claim_submitted();
+
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists set_reports_updated_at on public.reports;
+create trigger set_reports_updated_at
+before update on public.reports
+for each row execute procedure public.set_updated_at();
+
+drop trigger if exists set_claims_updated_at on public.claims;
+create trigger set_claims_updated_at
+before update on public.claims
+for each row execute procedure public.set_updated_at();
+
+create or replace function public.sync_found_report_update()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if new.type = 'temuan' then
+    update public.items
+    set title = new.item_title,
+        category = new.category,
+        location = new.location,
+        found_at = new.incident_at,
+        image_url = new.image_url,
+        description = new.public_description,
+        private_notes = new.private_description,
+        status = case
+          when new.status = 'klaim' then 'Menunggu Verifikasi'
+          when new.status = 'selesai' then 'Selesai'
+          else status
+        end
+    where source_report_id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_found_report_updated on public.reports;
+create trigger on_found_report_updated
+after update on public.reports
+for each row execute procedure public.sync_found_report_update();
+
+create or replace function public.handle_claim_updated()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  found_report_id uuid;
+  next_item_status text;
+  next_report_status public.report_status;
+begin
+  if new.status = old.status then
+    return new;
+  end if;
+
+  next_item_status := case new.status
+    when 'diajukan' then 'Menunggu Verifikasi'
+    when 'ditinjau' then 'Menunggu Verifikasi'
+    when 'disetujui' then 'Klaim Disetujui'
+    when 'ditolak' then 'Ditemukan'
+  end;
+
+  update public.items
+  set status = next_item_status
+  where id = new.item_id;
+
+  select source_report_id
+    into found_report_id
+  from public.items
+  where id = new.item_id;
+
+  if found_report_id is not null then
+    next_report_status := case new.status
+      when 'disetujui' then 'selesai'
+      when 'ditolak' then 'ditemukan'
+      else 'klaim'
+    end;
+
+    update public.reports
+    set status = next_report_status
+    where id = found_report_id;
+
+    insert into public.report_events (report_id, title, description, created_by)
+    values (
+      found_report_id,
+      'Status klaim diperbarui',
+      'Status klaim berubah menjadi ' || new.status || '.',
+      new.user_id
+    );
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_claim_updated on public.claims;
+create trigger on_claim_updated
+after update on public.claims
+for each row execute procedure public.handle_claim_updated();
+
+create or replace function public.remove_found_item_after_report_delete()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  delete from public.items where source_report_id = old.id;
+  return old;
+end;
+$$;
+
+drop trigger if exists on_found_report_deleted on public.reports;
+create trigger on_found_report_deleted
+after delete on public.reports
+for each row execute procedure public.remove_found_item_after_report_delete();
+
+update public.items
+set status = 'Menunggu Verifikasi'
+where id in (
+  select item_id from public.claims
+  where status in ('diajukan', 'ditinjau')
+);
+
+update public.reports
+set status = 'klaim', updated_at = now()
+where id in (
+  select items.source_report_id
+  from public.claims
+  join public.items on items.id = claims.item_id
+  where claims.status in ('diajukan', 'ditinjau')
+    and items.source_report_id is not null
+);
+
+insert into public.report_events (report_id, title, description, created_by)
+select distinct
+  items.source_report_id,
+  'Klaim diajukan',
+  'Ada pengguna yang mengajukan klaim kepemilikan. Petugas perlu memverifikasi ciri privatnya.',
+  claims.user_id
+from public.claims
+join public.items on items.id = claims.item_id
+where claims.status in ('diajukan', 'ditinjau')
+  and items.source_report_id is not null
+  and not exists (
+    select 1 from public.report_events
+    where report_events.report_id = items.source_report_id
+      and report_events.title = 'Klaim diajukan'
+  );
 
 insert into public.items (
   title, category, location, found_at, image_url, description,

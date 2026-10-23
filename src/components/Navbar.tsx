@@ -112,16 +112,6 @@ export default function Navbar() {
               Lapor Barang
             </Link>}
             {profile && <Link
-              href="/lacak"
-              className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
-                isCurrent('/lacak')
-                  ? 'bg-white text-[#123356] shadow-sm font-semibold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-              }`}
-            >
-              Lacak
-            </Link>}
-            {profile && <Link
               href="/laporan-saya"
               className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
                 isCurrent('/laporan-saya')

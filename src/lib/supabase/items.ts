@@ -8,6 +8,7 @@ export interface CatalogItem {
   location: string;
   date: string;
   time: string;
+  foundAt: string;
   image: string | null;
   description: string;
   status: string;
@@ -33,8 +34,9 @@ export function mapItem(row: ItemRow): CatalogItem {
     category: row.category,
     categoryTag: row.category.toUpperCase(),
     location: row.location,
-    date: foundAt.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
-    time: foundAt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+    date: foundAt.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' }),
+    time: foundAt.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }),
+    foundAt: row.found_at,
     image: row.image_url,
     description: row.description,
     status: row.status,

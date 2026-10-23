@@ -11,6 +11,7 @@ export type UserReportRow = {
   location: string;
   incident_at: string;
   public_description: string;
+  image_url: string | null;
   status: ReportStatus;
   created_at: string;
   updated_at: string;
@@ -45,7 +46,7 @@ export async function fetchUserReports() {
   if (!user) return { user: null, reports: [], claims: [] as ClaimRow[] };
 
   const [{ data: reports, error: reportsError }, { data: claims, error: claimsError }] = await Promise.all([
-    supabase.from('reports').select('id, report_code, type, item_title, category, location, incident_at, public_description, status, created_at, updated_at').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('reports').select('id, report_code, type, item_title, category, location, incident_at, public_description, image_url, status, created_at, updated_at').eq('user_id', user.id).order('created_at', { ascending: false }),
     supabase.from('claims').select('id, report_id, item_id, status, ticket_code, created_at').eq('user_id', user.id).order('created_at', { ascending: false }),
   ]);
 
@@ -67,7 +68,7 @@ export async function fetchLatestUserReport(reportId?: string) {
 
   const supabase = createClient();
   const [{ data: events, error: eventsError }, { data: reportClaims, error: claimsError }] = await Promise.all([
-    supabase.from('report_events').select('id, title, description, created_at').eq('report_id', report.id).order('created_at', { ascending: false }),
+    supabase.from('report_events').select('id, title, description, created_at').eq('report_id', report.id).order('created_at', { ascending: true }),
     Promise.resolve({ data: claims.filter((claim) => claim.report_id === report.id), error: null }),
   ]);
 
@@ -79,6 +80,7 @@ export async function fetchLatestUserReport(reportId?: string) {
 
 export function formatDate(value: string) {
   return new Date(value).toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta',
     day: '2-digit',
     month: 'short',
     year: 'numeric',

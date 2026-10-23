@@ -6,6 +6,31 @@ import { FileText, ShieldAlert, Upload, CheckCircle2, ArrowRight, ArrowLeft } fr
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/client';
 
+async function blurImageFile(file: File) {
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = reject;
+      element.src = objectUrl;
+    });
+    const padding = 24;
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth + padding * 2;
+    canvas.height = image.naturalHeight + padding * 2;
+    const context = canvas.getContext('2d');
+    if (!context) return file;
+    context.filter = 'blur(18px)';
+    context.drawImage(image, padding, padding, image.naturalWidth, image.naturalHeight);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, file.type || 'image/jpeg', 0.86));
+    return blob ? new File([blob], file.name, { type: file.type || 'image/jpeg' }) : file;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 export default function ReportPage() {
   const router = useRouter();
 
@@ -14,8 +39,13 @@ export default function ReportPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submittedReportCode, setSubmittedReportCode] = useState('');
+  const [submittedReportId, setSubmittedReportId] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [authChecked, setAuthChecked] = useState(!isSupabaseConfigured);
+  const predefinedCategories = ['Elektronik', 'Dokumen', 'Aksesoris', 'Tas & Pakaian', 'Lainnya'];
+
+  const toJakartaIso = (date: string, time: string) =>
+    new Date(`${date}T${time}:00+07:00`).toISOString();
 
   const [formData, setFormData] = useState({
     namaBarang: '',
@@ -75,9 +105,10 @@ export default function ReportPage() {
 
       let imageUrl: string | null = null;
       if (imageFile) {
-        const extension = imageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const uploadFile = reportType === 'temuan' ? await blurImageFile(imageFile) : imageFile;
+        const extension = uploadFile.name.split('.').pop()?.toLowerCase() || 'jpg';
         const imagePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
-        const { error: uploadError } = await supabase.storage.from('item-images').upload(imagePath, imageFile, { contentType: imageFile.type, upsert: false });
+        const { error: uploadError } = await supabase.storage.from('item-images').upload(imagePath, uploadFile, { contentType: uploadFile.type, upsert: false });
         if (uploadError) {
           setSubmitError('Foto belum dapat diunggah. Pastikan bucket item-images sudah dibuat.');
           return;
@@ -85,24 +116,26 @@ export default function ReportPage() {
         imageUrl = supabase.storage.from('item-images').getPublicUrl(imagePath).data.publicUrl;
       }
 
-      const { error } = await supabase.from('reports').insert({
+      const { data: savedReport, error } = await supabase.from('reports').insert({
         report_code: reportCode,
         user_id: user.id,
         type: reportType,
         item_title: formData.namaBarang,
         category: formData.kategori,
         location: formData.lokasi,
-        incident_at: `${formData.tanggal}T${formData.waktu}:00`,
+        incident_at: toJakartaIso(formData.tanggal, formData.waktu),
         public_description: formData.deskripsiPublik,
         private_description: formData.ciriRahasia,
         image_url: imageUrl,
         contact_phone: formData.telepon,
-      });
+      }).select('id').single();
 
-      if (error) {
+      if (error || !savedReport) {
         setSubmitError('Laporan belum dapat disimpan. Periksa koneksi lalu coba lagi.');
         return;
       }
+
+      setSubmittedReportId(savedReport.id);
 
     }
 
@@ -184,13 +217,13 @@ export default function ReportPage() {
 
             <div className="pt-4 flex flex-col sm:flex-row justify-center gap-3">
               <button
-                onClick={() => router.push('/lacak')}
+                onClick={() => window.location.assign(submittedReportId ? `/lacak?report=${submittedReportId}` : '/lacak')}
                 className="btn-primary text-xs py-2.5 px-5"
               >
                 Lacak Status Laporan Ini
               </button>
               <button
-                onClick={() => router.push('/dashboard')}
+                onClick={() => window.location.assign('/dashboard')}
                 className="btn-secondary text-xs py-2.5 px-5"
               >
                 Kembali ke Dashboard
@@ -229,8 +262,8 @@ export default function ReportPage() {
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-700 block">Kategori</label>
                     <select
-                      value={formData.kategori}
-                      onChange={(e) => setFormData({ ...formData, kategori: e.target.value as any })}
+                      value={predefinedCategories.includes(formData.kategori) ? formData.kategori : '__custom__'}
+                      onChange={(e) => setFormData({ ...formData, kategori: e.target.value === '__custom__' ? '' : e.target.value })}
                       className="form-input w-full"
                     >
                       <option>Elektronik</option>
@@ -238,7 +271,18 @@ export default function ReportPage() {
                       <option>Aksesoris</option>
                       <option>Tas & Pakaian</option>
                       <option>Lainnya</option>
+                      <option value="__custom__">Isi sendiri</option>
                     </select>
+                    {!predefinedCategories.includes(formData.kategori) && (
+                      <input
+                        type="text"
+                        required
+                        value={formData.kategori}
+                        onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
+                        className="form-input w-full mt-2"
+                        placeholder="Tulis kategori barang"
+                      />
+                    )}
                   </div>
 
                   <div className="space-y-1">
@@ -342,7 +386,7 @@ export default function ReportPage() {
                   <label className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:bg-slate-50 cursor-pointer transition-colors block">
                     <Upload className="w-6 h-6 text-slate-400 mx-auto mb-2" />
                     <span className="text-xs font-semibold text-slate-700 block">{imageFile ? imageFile.name : 'Pilih foto barang'}</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5 block">Format PNG, JPG, atau WEBP maks 5MB</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5 block">Format PNG, JPG, atau WEBP maks 5MB{reportType === 'temuan' ? ' · foto akan diburamkan untuk privasi' : ''}</span>
                     <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => {
                       const file = event.target.files?.[0] || null;
                       if (file && file.size > 5 * 1024 * 1024) {

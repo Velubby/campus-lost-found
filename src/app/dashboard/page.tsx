@@ -162,13 +162,13 @@ export default function DashboardPage() {
               </span>
             </div>
             <p className="text-xs text-slate-600 mt-0.5">
-              Status saat ini: {latestReport.public_description} · Diperbarui {formatDate(latestReport.updated_at)}
+              {latestReport.public_description} · Diperbarui {formatDate(latestReport.updated_at)}
             </p>
           </div>
         </div>
 
         <Link
-          href="/lacak"
+          href={`/lacak?report=${latestReport.id}`}
           className="btn-primary text-xs py-2 px-4 shrink-0"
         >
           Lacak Laporan
