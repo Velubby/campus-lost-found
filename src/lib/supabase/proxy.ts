@@ -24,7 +24,7 @@ export async function updateSession(request: NextRequest) {
   });
 
   const { data: claims } = await supabase.auth.getClaims();
-  const protectedPaths = ['/lapor', '/lacak', '/laporan-saya', '/pengaturan'];
+  const protectedPaths = ['/lapor', '/lacak', '/laporan-saya', '/pengaturan', '/admin'];
   const isProtectedPath = protectedPaths.some((path) => request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(`${path}/`));
 
   if (isProtectedPath && !claims?.claims) {

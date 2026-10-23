@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const [profile, setProfile] = useState<{ name: string; initials: string } | null>(null);
+  const [profile, setProfile] = useState<{ name: string; initials: string; role: string } | null>(null);
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -20,7 +20,8 @@ export default function Navbar() {
     const loadUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
-      setProfile(name ? { name, initials: name.slice(0, 2).toUpperCase() } : null);
+      const { data: accountProfile } = user ? await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle() : { data: null };
+      setProfile(name ? { name, initials: name.slice(0, 2).toUpperCase(), role: accountProfile?.role || 'user' } : null);
       setAuthReady(true);
     };
 
@@ -110,6 +111,16 @@ export default function Navbar() {
               }`}
             >
               Lapor Barang
+            </Link>}
+            {profile && profile.role === 'satpam' && <Link
+              href="/admin"
+              className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
+                isCurrent('/admin')
+                  ? 'bg-white text-[#123356] shadow-sm font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              Petugas
             </Link>}
             {profile && <Link
               href="/laporan-saya"

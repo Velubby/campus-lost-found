@@ -30,6 +30,8 @@ export type ClaimRow = {
   item_id: string;
   status: 'diajukan' | 'ditinjau' | 'disetujui' | 'ditolak';
   ticket_code: string;
+  pickup_location: string | null;
+  pickup_at: string | null;
   created_at: string;
 };
 
@@ -47,7 +49,7 @@ export async function fetchUserReports() {
 
   const [{ data: reports, error: reportsError }, { data: claims, error: claimsError }] = await Promise.all([
     supabase.from('reports').select('id, report_code, type, item_title, category, location, incident_at, public_description, image_url, status, created_at, updated_at').eq('user_id', user.id).order('created_at', { ascending: false }),
-    supabase.from('claims').select('id, report_id, item_id, status, ticket_code, created_at').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('claims').select('id, report_id, item_id, status, ticket_code, pickup_location, pickup_at, created_at').eq('user_id', user.id).order('created_at', { ascending: false }),
   ]);
 
   if (reportsError) throw reportsError;
@@ -58,6 +60,11 @@ export async function fetchUserReports() {
 
 export async function fetchLatestUserReport(reportId?: string) {
   const { user, reports, claims } = await fetchUserReports();
+  const directClaim = !reportId ? claims.find((item) => !item.report_id) : null;
+  if (directClaim) {
+    const { data: claimItem } = await createClient().from('items').select('id, title, location').eq('id', directClaim.item_id).maybeSingle();
+    return { user, reports, report: null, events: [] as ReportEventRow[], claim: directClaim, claimItem: (claimItem || null) as ClaimItemRow | null };
+  }
   const report = (reportId ? reports.find((item) => item.id === reportId) : reports[0]) || null;
   if (!report) {
     const claim = claims[0] || null;

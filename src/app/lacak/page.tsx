@@ -4,7 +4,9 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRight, Check, CheckCircle2, MessageSquare } from 'lucide-react';
+import QRCode from 'react-qr-code';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { createClient } from '@/lib/supabase/client';
 import { fetchLatestUserReport, formatDate, type ReportEventRow, type UserReportRow, type ClaimRow, type ClaimItemRow } from '@/lib/supabase/reports';
 
 function TrackingContent() {
@@ -16,6 +18,8 @@ function TrackingContent() {
   const [events, setEvents] = useState<ReportEventRow[]>([]);
   const [claim, setClaim] = useState<ClaimRow | null>(null);
   const [claimItem, setClaimItem] = useState<ClaimItemRow | null>(null);
+  const [pickupAtInput, setPickupAtInput] = useState('');
+  const [scheduleError, setScheduleError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -42,14 +46,29 @@ function TrackingContent() {
       .finally(() => setIsLoading(false));
   }, [router, requestedReportId]);
 
+  const schedulePickup = async () => {
+    if (!claim || !pickupAtInput) return;
+    const pickupAt = new Date(`${pickupAtInput}:00+07:00`).toISOString();
+    const { error: scheduleUpdateError } = await createClient().rpc('schedule_claim', {
+      claim_id: claim.id,
+      requested_pickup_at: pickupAt,
+    });
+    if (scheduleUpdateError) {
+      setScheduleError('Jadwal belum dapat disimpan. Pastikan klaim sudah disetujui petugas.');
+      return;
+    }
+    window.location.reload();
+  };
+
   if (isLoading) return <div className="max-w-7xl mx-auto px-4 py-16 text-center text-slate-500">Memuat status laporan...</div>;
   if (error) return <div role="alert" className="max-w-7xl mx-auto px-4 py-16 text-center text-rose-700">{error}</div>;
   if (!report && claim && claimItem) return (
     <div className="max-w-2xl mx-auto px-4 py-16 space-y-6">
       <div className="apple-card bg-white p-6 sm:p-8 space-y-5">
         <div><span className="text-xs font-bold text-sky-700 uppercase tracking-widest">Klaim kepemilikan</span><h1 className="text-2xl font-extrabold text-[#123356] mt-1">{claimItem.title}</h1><p className="text-sm text-slate-500 mt-1">{claimItem.location}</p></div>
-        <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3"><p className="text-sm font-bold text-sky-900">Klaim sedang ditinjau</p><p className="text-xs text-sky-700 mt-1">Tiket pengambilan: {claim.ticket_code}</p></div>
-        <p className="text-xs text-slate-500">Petugas akan menghubungi nomor telepon di profil akunmu setelah verifikasi selesai.</p>
+        <div className={`rounded-xl border px-4 py-3 ${claim.status === 'ditolak' ? 'border-rose-200 bg-rose-50' : claim.status === 'disetujui' ? 'border-emerald-200 bg-emerald-50' : 'border-sky-200 bg-sky-50'}`}><p className="text-sm font-bold text-slate-900">Status klaim: {claim.status}</p><p className="text-xs text-slate-700 mt-1">Tiket pengambilan: {claim.ticket_code}</p></div>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-[1fr_auto] sm:items-center"><div className="space-y-3"><p className="text-xs text-slate-500">Tahapan klaim</p><div className="flex flex-wrap gap-2">{['diajukan', 'ditinjau', 'disetujui'].map((step) => <span key={step} className={`rounded-full px-3 py-1 text-[11px] font-semibold ${claim.status === step || (claim.status === 'disetujui' && step !== 'ditolak') ? 'bg-[#123356] text-white' : 'bg-slate-100 text-slate-500'}`}>{step}</span>)}</div>{claim.status === 'disetujui' && claim.pickup_location && <p className="text-sm font-semibold text-emerald-800">Lokasi pengambilan: {claim.pickup_location}</p>}{claim.status === 'disetujui' && claim.pickup_at ? <p className="text-sm font-semibold text-emerald-800">Jadwal: {formatDate(claim.pickup_at)}</p> : claim.status === 'disetujui' && <div className="space-y-2"><label className="block text-xs font-semibold text-slate-600">Pilih tanggal dan jam pengambilan<input type="datetime-local" value={pickupAtInput} onChange={(event) => setPickupAtInput(event.target.value)} className="form-input mt-1 w-full" /></label><button type="button" onClick={schedulePickup} className="btn-primary text-xs">Konfirmasi Jadwal</button>{scheduleError && <p role="alert" className="text-xs text-rose-700">{scheduleError}</p>}</div>}</div>{claim.status === 'disetujui' && <div className="rounded-xl border border-slate-200 bg-white p-3"><QRCode value={claim.ticket_code} size={112} /><p className="mt-2 text-center text-[10px] font-semibold text-slate-500">Tunjukkan saat pengambilan</p></div>}</div>
+        <p className="text-xs text-slate-500">Petugas akan memperbarui status setelah verifikasi dan serah terima barang.</p>
       </div>
     </div>
   );

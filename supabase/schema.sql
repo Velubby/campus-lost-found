@@ -26,6 +26,7 @@ create table if not exists public.profiles (
   student_number text,
   faculty text,
   study_program text,
+  role text not null default 'user',
   created_at timestamptz not null default now()
 );
 
@@ -71,6 +72,8 @@ create table if not exists public.claims (
   contact_phone text not null,
   status public.claim_status not null default 'diajukan',
   ticket_code text not null unique,
+  pickup_location text,
+  pickup_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -88,7 +91,10 @@ alter table public.reports add column if not exists image_url text;
 alter table public.profiles add column if not exists student_number text;
 alter table public.profiles add column if not exists faculty text;
 alter table public.profiles add column if not exists study_program text;
+alter table public.profiles add column if not exists role text not null default 'user';
 alter table public.claims alter column report_id drop not null;
+alter table public.claims add column if not exists pickup_location text;
+alter table public.claims add column if not exists pickup_at timestamptz;
 alter table public.items add column if not exists source_report_id uuid unique;
 alter table public.items drop constraint if exists items_source_report_id_fkey;
 alter table public.items add constraint items_source_report_id_fkey
@@ -99,6 +105,20 @@ alter table public.items enable row level security;
 alter table public.reports enable row level security;
 alter table public.claims enable row level security;
 alter table public.report_events enable row level security;
+
+create or replace function public.is_staff()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles
+    where profiles.id = auth.uid()
+      and profiles.role = 'satpam'
+  );
+$$;
 
 drop policy if exists "Profiles are visible to their owner" on public.profiles;
 drop policy if exists "Users can create their profile" on public.profiles;
@@ -113,10 +133,14 @@ drop policy if exists "Users can delete their draft reports" on public.reports;
 drop policy if exists "Users can view their claims" on public.claims;
 drop policy if exists "Users can create their claims" on public.claims;
 drop policy if exists "Report and item owners can view claims" on public.claims;
+drop policy if exists "Staff can view profiles" on public.profiles;
+drop policy if exists "Staff can view reports" on public.reports;
+drop policy if exists "Staff can view and update claims" on public.claims;
+drop policy if exists "Staff can update claims" on public.claims;
 drop policy if exists "Users can view events for their reports" on public.report_events;
 
 create policy "Profiles are visible to their owner"
-  on public.profiles for select using (auth.uid() = id);
+  on public.profiles for select using (auth.uid() = id or public.is_staff());
 create policy "Users can create their profile"
   on public.profiles for insert with check (auth.uid() = id);
 create policy "Users can update their profile"
@@ -128,11 +152,11 @@ create policy "Users can create found items"
   on public.items for insert to authenticated with check (auth.uid() = created_by);
 
 create policy "Users can view their reports"
-  on public.reports for select using (auth.uid() = user_id);
+  on public.reports for select using (auth.uid() = user_id or public.is_staff());
 create policy "Users can create their reports"
   on public.reports for insert with check (auth.uid() = user_id);
 create policy "Users can update their reports"
-  on public.reports for update using (auth.uid() = user_id);
+  on public.reports for update using (auth.uid() = user_id or public.is_staff());
 create policy "Users can delete their draft reports"
   on public.reports for delete using (auth.uid() = user_id and status = 'draf');
 
@@ -160,6 +184,7 @@ create policy "Users can delete their item images"
 create policy "Report and item owners can view claims"
   on public.claims for select using (
     auth.uid() = user_id
+    or public.is_staff()
     or exists (
       select 1 from public.items
       where items.id = claims.item_id
@@ -174,8 +199,44 @@ create policy "Report and item owners can view claims"
 create policy "Users can create their claims"
   on public.claims for insert with check (auth.uid() = user_id);
 
+create policy "Staff can update claims"
+  on public.claims for update to authenticated
+  using (public.is_staff())
+  with check (public.is_staff());
+
+create or replace function public.schedule_claim(
+  claim_id uuid,
+  requested_pickup_at timestamptz
+)
+returns public.claims
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  updated_claim public.claims;
+begin
+  update public.claims
+  set pickup_at = requested_pickup_at
+  where id = claim_id
+    and user_id = auth.uid()
+    and status = 'disetujui'
+  returning * into updated_claim;
+
+  if updated_claim.id is null then
+    raise exception 'Klaim tidak ditemukan atau belum disetujui';
+  end if;
+
+  return updated_claim;
+end;
+$$;
+
+grant execute on function public.schedule_claim(uuid, timestamptz) to authenticated;
+
 create policy "Users can view events for their reports"
   on public.report_events for select using (
+    public.is_staff()
+    or
     exists (
       select 1 from public.reports
       where reports.id = report_events.report_id
