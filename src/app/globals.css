@@ -1,0 +1,277 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Campus Lost & Found Design System
+   Blend of Figma Portal Specification + Apple / macOS Human Interface Aesthetics
+   ========================================================================== */
+
+:root {
+  /* Apple / macOS Palette blended with Campus Navy */
+  --apple-bg: #f5f5f7;
+  --apple-surface: rgba(255, 255, 255, 0.85);
+  --apple-surface-solid: #ffffff;
+  --apple-surface-secondary: #fbfbfd;
+  --apple-border: rgba(0, 0, 0, 0.08);
+  --apple-border-subtle: rgba(0, 0, 0, 0.04);
+  --apple-border-focus: #0071e3;
+  
+  /* Primary Identity (from Figma) */
+  --campus-navy: #123356;
+  --campus-navy-hover: #0c233c;
+  --campus-navy-dark: #091524;
+  --campus-accent-blue: #0071e3;
+  --campus-accent-light: #e8f2fc;
+  
+  /* Typography */
+  --text-primary: #1d1d1f;
+  --text-secondary: #515154;
+  --text-tertiary: #86868b;
+  --text-inverse: #ffffff;
+  
+  /* Status Indicators (macOS System Hues) */
+  --system-green: #34c759;
+  --system-green-bg: #eaf8ee;
+  --system-orange: #ff9500;
+  --system-orange-bg: #fff6e8;
+  --system-red: #ff3b30;
+  --system-blue: #0071e3;
+  
+  /* macOS Shadows */
+  --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-card: 0 4px 14px -2px rgba(0, 0, 0, 0.05), 0 1px 4px rgba(0, 0, 0, 0.02);
+  --shadow-elevated: 0 18px 40px -8px rgba(0, 0, 0, 0.09), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-window: 0 24px 60px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.2);
+  
+  /* Curvatures (Apple Squircles) */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+
+  /* Fonts */
+  --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Helvetica Neue", sans-serif;
+}
+
+/* Global Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--apple-bg);
+  color: var(--text-primary);
+  font-family: var(--font-stack);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+/* macOS Frosted Glass Header */
+.macos-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid var(--apple-border);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* macOS Window Header Bar Accent (Traffic Lights) */
+.macos-traffic-lights {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.traffic-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+}
+
+.traffic-light-close { background-color: #ff5f56; }
+.traffic-light-min { background-color: #ffbd2e; }
+.traffic-light-max { background-color: #27c93f; }
+
+/* macOS Segmented Control */
+.segmented-control {
+  display: inline-flex;
+  padding: 3px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--apple-border-subtle);
+  user-select: none;
+}
+
+.segmented-control-btn {
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.segmented-control-btn:hover {
+  color: var(--text-primary);
+}
+
+.segmented-control-btn.active {
+  background: #ffffff;
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1), 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+/* Apple Crisp Cards */
+.apple-card {
+  background: #ffffff;
+  border: 1px solid var(--apple-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+}
+
+.apple-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-elevated);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+/* macOS Input & Search Styling */
+.macos-input {
+  background: #ffffff;
+  border: 1px solid var(--apple-border);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: var(--text-primary);
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+/* Input variant with a leading icon: icon sits at left-3 (12px), so we need pl 36px */
+.macos-input-icon-left {
+  padding-left: 2.25rem;
+}
+
+/* Input variant with a trailing icon (e.g. show/hide password) */
+.macos-input-icon-right {
+  padding-right: 2.5rem;
+}
+
+.macos-input:focus {
+  border-color: var(--campus-accent-blue);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.2);
+}
+
+/* macOS Keyboard Shortcut Pill (⌘K) */
+.kbd-shortcut {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-tertiary);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Buttons */
+.btn-primary {
+  background-color: var(--campus-navy);
+  color: var(--text-inverse);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+  min-height: 44px;
+}
+
+.btn-primary:hover {
+  background-color: var(--campus-navy-hover);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: var(--campus-navy);
+  border: 1px solid var(--apple-border);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+  min-height: 44px;
+}
+
+.btn-secondary:hover {
+  background: #fbfbfd;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+/* Badges */
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge-found {
+  background: var(--system-green-bg);
+  color: var(--system-green);
+}
+
+.badge-draft {
+  background: var(--system-orange-bg);
+  color: var(--system-orange);
+}
+
+.badge-completed {
+  background: #f1f5f9;
+  color: var(--text-secondary);
+}
+
+/* Deep Footer from Figma */
+.campus-footer {
+  background-color: var(--campus-navy-dark);
+  color: #94a3b8;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}

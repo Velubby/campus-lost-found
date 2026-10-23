@@ -3,7 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Masuk | Lost &amp; Found Kampus</title>
+  <title>Laporan Berhasil | Lost &amp; Found Kampus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
 <header>
@@ -11,14 +15,14 @@
   <nav aria-label="Navigasi utama"><ul>
       <li><a href="index.html">Beranda</a></li>
       <li><a href="cari-barang.html">Cari Barang</a></li>
-      <li><a href="lapor-barang.html">Lapor Barang</a></li>
+      <li><a href="lapor-barang.html" aria-current="page">Lapor Barang</a></li>
       <li><a href="lacak-laporan.html">Lacak Laporan</a></li>
       <li><a href="bantuan.html">Bantuan</a></li>
-      <li><a href="masuk.html" aria-current="page">Masuk</a></li>
+      <li><a href="masuk.html">Masuk</a></li>
   </ul></nav>
 </header>
 <main id="konten">
-<section class="login-panel"><p>AKUN KAMPUS</p><h1>Masuk ke Lost &amp; Found</h1><p>Masuk untuk mengelola laporan dan mengajukan klaim barang.</p><form action="lacak-laporan.html" method="get"><label for="email-masuk">Email kampus</label><input id="email-masuk" name="email" type="email" required placeholder="nama@kampus.ac.id"><label for="password">Kata sandi</label><input id="password" name="password" type="password" required><p><input id="ingat" name="ingat" type="checkbox"><label for="ingat"> Ingat saya</label></p><button type="submit">Masuk</button></form><p>Belum punya akun? Hubungi administrator kampus.</p><p><a href="index.html">Kembali ke Beranda</a></p><p><small>Form ini hanya prototipe; tidak ada autentikasi atau penyimpanan kata sandi.</small></p></section>
+<section class="success-page"><p>STATUS LAPORAN</p><h1>Laporan berhasil disiapkan</h1><p>Terima kasih telah membantu menjaga lingkungan kampus. Simpan nomor contoh berikut untuk simulasi tugas.</p><p class="report-number"><strong>LFK-2026-001</strong></p><h2>Langkah selanjutnya</h2><ol><li>Petugas akan memeriksa informasi laporan.</li><li>Jika diperlukan, petugas menghubungi pelapor untuk verifikasi.</li><li>Pantau perkembangan melalui halaman lacak laporan.</li></ol><p><a href="lacak-laporan.html">Lacak Laporan</a> · <a href="index.html">Kembali ke Beranda</a></p><p><small>Catatan: ini adalah alur simulasi front-end; data formulir belum tersimpan ke server.</small></p></section>
 </main>
 <footer>
   <section><h2>Lost &amp; Found Kampus</h2><p>Layanan informasi barang hilang dan temuan untuk warga kampus.</p></section>

@@ -3,14 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cari Barang | Lost &amp; Found Kampus</title>
+  <title>Beranda | Lost &amp; Found Kampus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
 <header>
   <div class="brand"><a href="index.html"><img src="assets/images/logo.svg" alt="" width="36" height="36"> <strong>Lost &amp; Found Kampus</strong></a></div>
   <nav aria-label="Navigasi utama"><ul>
-      <li><a href="index.html">Beranda</a></li>
-      <li><a href="cari-barang.html" aria-current="page">Cari Barang</a></li>
+      <li><a href="index.html" aria-current="page">Beranda</a></li>
+      <li><a href="cari-barang.html">Cari Barang</a></li>
       <li><a href="lapor-barang.html">Lapor Barang</a></li>
       <li><a href="lacak-laporan.html">Lacak Laporan</a></li>
       <li><a href="bantuan.html">Bantuan</a></li>
@@ -18,9 +22,17 @@
   </ul></nav>
 </header>
 <main id="konten">
-<section class="page-heading"><p>KATALOG BARANG</p><h1>Cari Barang Hilang</h1><p>Gunakan kata kunci atau telusuri barang yang baru ditemukan.</p></section>
-<form action="cari-barang.html" method="get" class="search-form"><label for="q">Nama barang atau kata kunci</label><input id="q" name="q" type="search" placeholder="Misalnya dompet cokelat"><label for="lokasi">Lokasi</label><select id="lokasi" name="lokasi"><option value="">Semua lokasi</option><option>Gedung A</option><option>Parkiran Utama</option><option>Perpustakaan</option><option>Gedung C</option></select><button type="submit">Cari</button></form>
-<section><h2>Barang temuan terbaru</h2><div class="item-grid">      <article class="item-card">
+<section class="hero">
+  <div class="hero-copy"><p><strong>LAYANAN RESMI KAMPUS</strong></p>
+    <h1>Barangmu mungkin lebih dekat dari yang kamu kira.</h1>
+    <p>Lost &amp; Found Kampus membantu warga kampus mencari, melaporkan, dan mengambil barang dengan proses yang aman serta transparan.</p>
+    <form action="cari-barang.html" method="get"><label for="q-home">Cari barang hilangmu di sini</label><div class="search-row"><input id="q-home" name="q" type="search" placeholder="Contoh: dompet, kunci, botol"><button type="submit">Cari Barang</button></div></form>
+    <p><a href="cari-barang.html">Cari Barang</a> · <a href="lapor-barang.html">Lapor Barang</a></p>
+    <p>Tersedia untuk mahasiswa, dosen, staf, dan tenaga kependidikan.</p>
+  </div>
+  <div class="hero-visual"><img src="assets/images/hero-lost-found.png" alt="Ilustrasi layanan pengembalian barang temuan" width="620"><p>Posko terintegrasi · aktif 08.00–21.00</p><p><strong>87%</strong> klaim selesai dalam 48 jam</p></div>
+</section>
+<section class="catalog"><p>KATALOG TERBARU</p><h2>Barang Ditemukan 24 Jam Terakhir</h2><p><a href="cari-barang.html">Lihat semua barang →</a></p><div class="item-grid">      <article class="item-card">
         <img src="assets/images/dompet-cokelat.webp" alt="Foto Dompet Kulit Cokelat" width="289" height="170">
         <h3>Dompet Kulit Cokelat</h3><p>Gedung A · 08.35</p><p>Dompet kulit berwarna cokelat ditemukan di sekitar Gedung A.</p>
         <a href="detail-barang.html?barang=1">Lihat Detail</a>
@@ -40,7 +52,6 @@
         <h3>Kalkulator Scientific</h3><p>Gedung C · 11.40</p><p>Kalkulator scientific ditemukan di Gedung C.</p>
         <a href="detail-barang.html?barang=4">Lihat Detail</a>
       </article></div></section>
-<p>Belum menemukan barangmu? <a href="lapor-barang.html">Buat laporan barang hilang</a>.</p>
 </main>
 <footer>
   <section><h2>Lost &amp; Found Kampus</h2><p>Layanan informasi barang hilang dan temuan untuk warga kampus.</p></section>
@@ -48,5 +59,6 @@
   <section><h2>Customer Service</h2><p><a href="mailto:lostfound@example.edu">lostfound@example.edu</a></p></section>
   <section><h2>Kontak Satpam</h2><p>Hubungi pos keamanan kampus untuk verifikasi langsung.</p></section>
 </footer>
+<script src="assets/js/main.js" defer></script>
 </body>
 </html>
