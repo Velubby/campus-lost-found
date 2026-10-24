@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Search, PlusCircle, PackageSearch, FileText, ShieldCheck, Clock, ArrowRight } from 'lucide-react';
+import { Search, PlusCircle, PackageSearch, FileText, Clock, ArrowRight } from 'lucide-react';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/client';
 import { fetchLatestUserReport, formatDate, type UserReportRow } from '@/lib/supabase/reports';

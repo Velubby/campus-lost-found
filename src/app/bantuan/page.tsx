@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { HelpCircle, ChevronDown, ShieldCheck, Mail, Phone, MapPin, ArrowRight } from 'lucide-react';
+import { ChevronDown, ShieldCheck } from 'lucide-react';
 
 export default function HelpPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);

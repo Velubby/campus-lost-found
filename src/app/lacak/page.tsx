@@ -20,13 +20,11 @@ function TrackingContent() {
   const [claimItem, setClaimItem] = useState<ClaimItemRow | null>(null);
   const [pickupAtInput, setPickupAtInput] = useState('');
   const [scheduleError, setScheduleError] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(() => isSupabaseConfigured);
+  const [error, setError] = useState(() => (isSupabaseConfigured ? '' : 'Supabase belum dikonfigurasi.'));
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      setError('Supabase belum dikonfigurasi.');
-      setIsLoading(false);
       return;
     }
 

@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, MapPin, Calendar, Clock, ShieldCheck, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Clock, ShieldCheck, CheckCircle2, X } from 'lucide-react';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { fetchCatalogItems, type CatalogItem } from '@/lib/supabase/items';
 import { createClient } from '@/lib/supabase/client';
@@ -15,11 +15,10 @@ function ItemDetailContent() {
   const itemId = params.id as string;
 
   const [item, setItem] = useState<CatalogItem | null>(null);
-  const [itemError, setItemError] = useState('');
+  const [itemError, setItemError] = useState(() => (isSupabaseConfigured ? '' : 'Supabase belum dikonfigurasi.'));
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      setItemError('Supabase belum dikonfigurasi.');
       return;
     }
 

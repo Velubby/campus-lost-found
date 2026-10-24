@@ -19,12 +19,13 @@ function SearchContent() {
   const [sortBy, setSortBy] = useState('newest');
   const [timeRange, setTimeRange] = useState('all');
   const [items, setItems] = useState<CatalogItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => isSupabaseConfigured);
   const [catalogError, setCatalogError] = useState('');
+  // Captured once at mount — stable, no re-renders
+  const [now] = useState(Date.now);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      setIsLoading(false);
       return;
     }
 
@@ -58,7 +59,10 @@ function SearchContent() {
   };
 
   const filteredItems = useMemo(() => {
-    const minimumDate = timeRange === 'all' ? null : new Date(Date.now() - Number(timeRange) * 24 * 60 * 60 * 1000);
+    const minimumDate =
+      timeRange === 'all' || !now
+        ? null
+        : new Date(now - Number(timeRange) * 24 * 60 * 60 * 1000);
     return items.filter(item => {
       // Query filter
       const q = query.toLowerCase().trim();
@@ -82,7 +86,7 @@ function SearchContent() {
     }).sort((first, second) => sortBy === 'oldest'
       ? new Date(first.foundAt).getTime() - new Date(second.foundAt).getTime()
       : new Date(second.foundAt).getTime() - new Date(first.foundAt).getTime());
-  }, [items, query, selectedLocation, selectedCategories, selectedLocations, sortBy, timeRange]);
+  }, [items, query, selectedLocation, selectedCategories, selectedLocations, sortBy, timeRange, now]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -242,7 +246,7 @@ function SearchContent() {
             <div role="alert" className="apple-card p-12 text-center text-sm text-rose-700">{catalogError}</div>
           ) : filteredItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredItems.map(item => (
+              {filteredItems.map((item, index) => (
                 <article
                   key={item.id}
                   className="apple-card group flex flex-col overflow-hidden bg-white"
@@ -255,6 +259,7 @@ function SearchContent() {
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                         className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        priority={index === 0}
                       />
                     ) : <div className="h-full w-full bg-slate-200" aria-label="Foto belum tersedia" />}
                     <span className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/95 backdrop-blur-md text-slate-800 shadow-xs uppercase">

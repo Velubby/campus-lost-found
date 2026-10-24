@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Search, ShieldCheck, LogOut, Settings } from 'lucide-react';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/client';
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [profile, setProfile] = useState<{ name: string; initials: string; role: string } | null>(null);
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -31,9 +32,9 @@ export default function Navbar() {
   }, []);
 
   const isCurrent = (path: string) => {
-    if (path === '/' && pathname === '/') return true;
-    if (path !== '/' && pathname.startsWith(path)) return true;
-    return false;
+    if (path === '/') return pathname === '/';
+    // Exact segment match: /lapor should not match /laporan-saya
+    return pathname === path || pathname.startsWith(path + '/');
   };
 
   const isAuthPage = pathname === '/masuk' || pathname === '/daftar';
@@ -45,7 +46,8 @@ export default function Navbar() {
       window.localStorage.removeItem('campus-lnf-user');
     }
     setMenuOpen(false);
-    window.location.assign('/masuk');
+    router.push('/masuk');
+    router.refresh();
   };
 
   return (

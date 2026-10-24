@@ -15,11 +15,10 @@ export default function SettingsPage() {
   const [studyProgram, setStudyProgram] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => (isSupabaseConfigured ? '' : 'Supabase belum dikonfigurasi.'));
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      setError('Supabase belum dikonfigurasi.');
       return;
     }
 

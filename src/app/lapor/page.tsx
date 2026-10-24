@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, ShieldAlert, Upload, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { ShieldAlert, Upload, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/client';
 
@@ -34,7 +34,13 @@ async function blurImageFile(file: File) {
 export default function ReportPage() {
   const router = useRouter();
 
-  const [reportType, setReportType] = useState<'hilang' | 'temuan'>('hilang');
+  const [reportType, setReportType] = useState<'hilang' | 'temuan'>(() => {
+    if (typeof window !== 'undefined') {
+      const requested = new URLSearchParams(window.location.search).get('type');
+      if (requested === 'temuan') return 'temuan';
+    }
+    return 'hilang';
+  });
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -64,9 +70,6 @@ export default function ReportPage() {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
-    const requestedType = new URLSearchParams(window.location.search).get('type');
-    if (requestedType === 'temuan') setReportType('temuan');
-
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (!user) {
         router.replace('/masuk?next=/lapor');
@@ -83,7 +86,7 @@ export default function ReportPage() {
         setAuthChecked(true);
       });
     });
-  }, []);
+  }, [router]);
 
   if (!authChecked) {
     return <div className="max-w-3xl mx-auto px-4 py-16 text-center text-slate-500">Memeriksa sesi akun...</div>;
@@ -217,13 +220,13 @@ export default function ReportPage() {
 
             <div className="pt-4 flex flex-col sm:flex-row justify-center gap-3">
               <button
-                onClick={() => window.location.assign(submittedReportId ? `/lacak?report=${submittedReportId}` : '/lacak')}
+                onClick={() => router.push(submittedReportId ? `/lacak?report=${submittedReportId}` : '/lacak')}
                 className="btn-primary text-xs py-2.5 px-5"
               >
                 Lacak Status Laporan Ini
               </button>
               <button
-                onClick={() => window.location.assign('/dashboard')}
+                onClick={() => router.push('/dashboard')}
                 className="btn-secondary text-xs py-2.5 px-5"
               >
                 Kembali ke Dashboard

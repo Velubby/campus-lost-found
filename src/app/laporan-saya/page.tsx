@@ -21,13 +21,11 @@ export default function MyReportsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ReportTab>('aktif');
   const [reports, setReports] = useState<UserReportRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(() => isSupabaseConfigured);
+  const [error, setError] = useState(() => (isSupabaseConfigured ? '' : 'Supabase belum dikonfigurasi.'));
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      setError('Supabase belum dikonfigurasi.');
-      setIsLoading(false);
       return;
     }
 
