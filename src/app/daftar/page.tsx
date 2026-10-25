@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, Lock, Mail, UserRound } from 'lucide-react';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -22,11 +23,13 @@ export default function RegisterPage() {
 
     if (!email.endsWith('@kampus.ac.id') && !email.endsWith('@mahasiswa.kampus.ac.id')) {
       setError('Gunakan email institusi kampus untuk membuat akun.');
+      toast.error('Gunakan email institusi kampus untuk membuat akun.');
       return;
     }
 
     if (password.length < 8) {
       setError('Password harus berisi minimal 8 karakter.');
+      toast.error('Password harus berisi minimal 8 karakter.');
       return;
     }
 
@@ -39,12 +42,14 @@ export default function RegisterPage() {
 
       if (signUpError) {
         setError(signUpError.message);
+        toast.error(signUpError.message);
         return;
       }
     } else {
       window.localStorage.setItem('campus-lnf-user', JSON.stringify({ name, email, password }));
     }
 
+    toast.success('Pendaftaran akun berhasil! Silakan masuk.');
     router.push('/masuk?registered=1');
   };
 

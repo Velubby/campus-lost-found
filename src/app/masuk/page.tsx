@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function LoginPage() {
       const { error: signInError } = await createClient().auth.signInWithPassword({ email, password });
       if (signInError) {
         setError('Email atau password belum sesuai.');
+        toast.error('Email atau password belum sesuai.');
         return;
       }
     } else {
@@ -31,11 +33,13 @@ export default function LoginPage() {
 
       if (!isDemoAccount && (!user || user.email !== email || user.password !== password)) {
         setError('Email atau password belum sesuai. Gunakan akun terdaftar atau akun demo.');
+        toast.error('Email atau password belum sesuai.');
         return;
       }
     }
 
     setError('');
+    toast.success('Berhasil masuk ke akun');
     router.push('/dashboard');
   };
 

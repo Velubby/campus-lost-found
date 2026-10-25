@@ -8,6 +8,7 @@ import { ArrowLeft, MapPin, Calendar, Clock, ShieldCheck, CheckCircle2, X } from
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { fetchCatalogItems, type CatalogItem } from '@/lib/supabase/items';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 function ItemDetailContent() {
   const params = useParams();
@@ -47,6 +48,7 @@ function ItemDetailContent() {
 
     if (!isSupabaseConfigured) {
       setClaimError('Supabase belum dikonfigurasi.');
+      toast.error('Supabase belum dikonfigurasi.');
       return;
     }
 
@@ -54,6 +56,7 @@ function ItemDetailContent() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       setClaimError('Silakan masuk atau buat akun terlebih dahulu untuk mengajukan klaim.');
+      toast.error('Silakan masuk terlebih dahulu untuk mengajukan klaim.');
       return;
     }
 
@@ -61,6 +64,7 @@ function ItemDetailContent() {
     const contactPhone = claimAnswers.kontak || profile?.phone || '';
     if (!contactPhone) {
       setClaimError('Lengkapi nomor telepon di Pengaturan akun terlebih dahulu.');
+      toast.error('Lengkapi nomor telepon di Pengaturan akun terlebih dahulu.');
       return;
     }
 
@@ -75,11 +79,13 @@ function ItemDetailContent() {
 
     if (error) {
       setClaimError('Klaim belum dapat disimpan. Coba lagi nanti.');
+      toast.error('Klaim belum dapat disimpan. Coba lagi nanti.');
       return;
     }
 
     setClaimError('');
     setClaimSubmitted(true);
+    toast.success('Pengajuan klaim berhasil dikirim!');
     setTimeout(() => {
       setIsClaimModalOpen(false);
       router.push('/lacak');

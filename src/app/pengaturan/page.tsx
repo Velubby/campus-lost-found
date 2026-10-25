@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Save, UserRound } from 'lucide-react';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -64,10 +65,12 @@ export default function SettingsPage() {
 
     if (profileError || authError) {
       setError('Profil belum dapat disimpan. Coba lagi nanti.');
+      toast.error('Profil belum dapat disimpan. Coba lagi nanti.');
       return;
     }
 
     setMessage('Pengaturan akun berhasil disimpan.');
+    toast.success('Pengaturan akun berhasil disimpan.');
   };
 
   return (

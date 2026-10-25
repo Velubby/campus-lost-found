@@ -3,18 +3,28 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import type { FilterStatus, UpdateClaimInput, BulkUpdateInput, Claim } from '@/types/claims';
+import type { FilterStatus, UpdateClaimInput, BulkUpdateInput, Claim, LostReport, ReportStatus, FilterReportStatus } from '@/types/claims';
 
 const updateClaimSchema = z.object({
   claimId: z.string().uuid(),
   status: z.enum(['ditinjau', 'disetujui', 'ditolak']),
   pickupLocation: z.string().min(1).max(200).optional(),
+  rejectReason: z.string().max(300).optional(),
 });
 
 const bulkUpdateSchema = z.object({
   claimIds: z.array(z.string().uuid()).min(1).max(50),
   status: z.enum(['ditinjau', 'disetujui', 'ditolak']),
   pickupLocation: z.string().min(1).max(200).optional(),
+});
+
+const updateReportSchema = z.object({
+  reportId: z.string().uuid(),
+  status: z.enum(['draf', 'aktif', 'ditemukan', 'klaim', 'selesai']),
+  finderName: z.string().max(100).optional(),
+  foundLocation: z.string().max(200).optional(),
+  storageLocation: z.string().max(200).optional(),
+  note: z.string().max(300).optional(),
 });
 
 type ActionResult<T = null> =
@@ -56,8 +66,12 @@ export async function updateClaimAction(input: UpdateClaimInput): Promise<Action
       return { success: false, error: 'Klaim tidak ditemukan', code: 'NOT_FOUND' };
     }
 
-    if (claim.status === 'disetujui' || claim.status === 'ditolak') {
-      return { success: false, error: 'Klaim sudah diproses dan tidak dapat diubah', code: 'INVALID_TRANSITION' };
+    if (claim.status === 'disetujui') {
+      return { success: false, error: 'Klaim sudah disetujui dan tidak dapat diubah kembali', code: 'INVALID_TRANSITION' };
+    }
+
+    if (claim.status === 'ditolak' && parsed.status !== 'ditinjau') {
+      return { success: false, error: 'Klaim yang ditolak hanya dapat dipulihkan ke status "Ditinjau"', code: 'INVALID_TRANSITION' };
     }
 
     if (parsed.status === 'disetujui' && !parsed.pickupLocation) {
@@ -84,10 +98,21 @@ export async function updateClaimAction(input: UpdateClaimInput): Promise<Action
     }
 
     if (claim.report_id) {
+      let title = 'Status klaim diperbarui oleh petugas';
+      let desc = `Status berubah dari ${claim.status} menjadi ${parsed.status}${parsed.pickupLocation ? `, lokasi: ${parsed.pickupLocation}` : ''}`;
+
+      if (parsed.status === 'ditolak') {
+        title = 'Klaim ditolak oleh petugas';
+        desc = parsed.rejectReason ? `Alasan penolakan: ${parsed.rejectReason}` : 'Ciri rahasia yang diajukan belum sesuai dengan barang temuan.';
+      } else if (claim.status === 'ditolak' && parsed.status === 'ditinjau') {
+        title = 'Klaim dibuka kembali untuk peninjauan ulang';
+        desc = 'Petugas membuka kembali tiket klaim ini untuk verifikasi ulang.';
+      }
+
       await supabase.from('report_events').insert({
         report_id: claim.report_id,
-        title: 'Status klaim diperbarui oleh petugas',
-        description: `Status berubah dari ${claim.status} menjadi ${parsed.status}${parsed.pickupLocation ? `, lokasi: ${parsed.pickupLocation}` : ''}`,
+        title,
+        description: desc,
         created_by: user.id,
       });
     }
@@ -311,6 +336,150 @@ export async function getClaimStatsAction(): Promise<ActionResult<{ total: numbe
     if (error instanceof Error) {
       if (error.message === 'UNAUTHENTICATED') return { success: false, error: 'Silakan login ulang', code: 'UNAUTHENTICATED' };
       if (error.message === 'FORBIDDEN') return { success: false, error: 'Akses ditolak', code: 'FORBIDDEN' };
+    }
+    return { success: false, error: 'Terjadi kesalahan server', code: 'SERVER_ERROR' };
+  }
+}
+
+export async function fetchLostReportsAction(
+  cursor?: string,
+  limit = 20,
+  statusFilter?: FilterReportStatus,
+  searchQuery?: string
+): Promise<ActionResult<{ reports: LostReport[]; total: number; hasMore: boolean; nextCursor: string | null }>> {
+  try {
+    await requireSatpam();
+    const supabase = await createClient();
+
+    let query = supabase
+      .from('reports')
+      .select('*', { count: 'exact' })
+      .eq('type', 'hilang')
+      .order('created_at', { ascending: false });
+
+    if (cursor) {
+      query = query.lt('created_at', cursor);
+    }
+
+    if (statusFilter && statusFilter !== 'semua') {
+      query = query.eq('status', statusFilter);
+    }
+
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.trim();
+      query = query.or(`report_code.ilike.%${q}%,item_title.ilike.%${q}%,location.ilike.%${q}%,contact_phone.ilike.%${q}%`);
+    }
+
+    query = query.limit(limit + 1);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('Fetch lost reports error:', error);
+      return { success: false, error: 'Gagal memuat data laporan kehilangan', code: 'FETCH_FAILED' };
+    }
+
+    let reports = (data || []) as unknown as LostReport[];
+
+    // Fetch reporter profile
+    const userIds = [...new Set(reports.map((r) => r.user_id).filter(Boolean))];
+    const profileMap: Record<string, { id: string; full_name: string; student_number: string | null; faculty: string | null; study_program: string | null; phone: string | null }> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, student_number, faculty, study_program, phone')
+        .in('id', userIds);
+      if (profiles) {
+        for (const p of profiles) {
+          profileMap[p.id] = p;
+        }
+      }
+    }
+
+    reports = reports.map((r) => ({
+      ...r,
+      reporter: profileMap[r.user_id] || null,
+    }));
+
+    const hasMore = reports.length > limit;
+    const items = hasMore ? reports.slice(0, limit) : reports;
+    const nextCursor = hasMore && items.length > 0 ? items[items.length - 1].created_at : null;
+
+    return { success: true, data: { reports: items, total: count || 0, hasMore, nextCursor } };
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'UNAUTHENTICATED') return { success: false, error: 'Silakan login ulang', code: 'UNAUTHENTICATED' };
+      if (error.message === 'FORBIDDEN') return { success: false, error: 'Akses ditolak: hanya untuk petugas', code: 'FORBIDDEN' };
+    }
+    console.error('fetchLostReportsAction error:', error);
+    return { success: false, error: 'Terjadi kesalahan server', code: 'SERVER_ERROR' };
+  }
+}
+
+export async function updateReportStatusAction(input: {
+  reportId: string;
+  status: ReportStatus;
+  finderName?: string;
+  foundLocation?: string;
+  storageLocation?: string;
+  note?: string;
+}): Promise<ActionResult> {
+  try {
+    const { supabase, user } = await requireSatpam();
+    const parsed = updateReportSchema.parse(input);
+
+    const { error: updateError } = await supabase
+      .from('reports')
+      .update({
+        status: parsed.status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', parsed.reportId);
+
+    if (updateError) {
+      console.error('Update report error:', updateError);
+      return { success: false, error: 'Gagal memperbarui status laporan', code: 'UPDATE_FAILED' };
+    }
+
+    let eventTitle = `Status diubah ke ${parsed.status}`;
+    let eventDescription = parsed.note || `Status laporan diperbarui oleh petugas keamanan posko.`;
+
+    if (parsed.status === 'ditemukan') {
+      eventTitle = 'Barang telah diamankan di posko (menunggu verifikasi)';
+      const details = [
+        parsed.finderName ? `Diserahkan oleh: ${parsed.finderName}` : null,
+        parsed.foundLocation ? `Lokasi ditemukan: ${parsed.foundLocation}` : null,
+        parsed.storageLocation ? `Disimpan di: ${parsed.storageLocation}` : null,
+        parsed.note ? `Catatan: ${parsed.note}` : null,
+      ].filter(Boolean).join(' · ');
+      eventDescription = details || 'Barang telah ditemukan dan disimpan di posko keamanan untuk verifikasi.';
+    } else if (parsed.status === 'selesai') {
+      eventTitle = 'Barang berhasil diverifikasi dan diserahkan';
+      eventDescription = parsed.note || 'Ciri kepemilikan telah diverifikasi oleh petugas dan barang telah diserahkan kembali kepada pemilik.';
+    } else if (parsed.status === 'aktif') {
+      eventTitle = 'Laporan diaktifkan kembali dalam pencarian';
+      eventDescription = parsed.note || 'Laporan aktif dalam proses pemantauan dan pencarian oleh petugas.';
+    }
+
+    await supabase.from('report_events').insert({
+      report_id: parsed.reportId,
+      title: eventTitle,
+      description: eventDescription,
+      created_by: user.id,
+    });
+
+    revalidatePath('/admin');
+    revalidatePath('/lacak');
+    revalidatePath('/laporan-saya');
+
+    return { success: true, data: null };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: 'Format data laporan tidak valid', code: 'VALIDATION_ERROR' };
+    }
+    if (error instanceof Error) {
+      if (error.message === 'UNAUTHENTICATED') return { success: false, error: 'Silakan login ulang', code: 'UNAUTHENTICATED' };
+      if (error.message === 'FORBIDDEN') return { success: false, error: 'Akses ditolak: hanya untuk petugas', code: 'FORBIDDEN' };
     }
     return { success: false, error: 'Terjadi kesalahan server', code: 'SERVER_ERROR' };
   }

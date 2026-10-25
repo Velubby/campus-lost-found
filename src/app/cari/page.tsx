@@ -112,7 +112,7 @@ function SearchContent() {
             <select
               value={selectedLocation}
               onChange={(e) => setSelectedLocation(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 bg-white text-slate-700"
+              className="form-input w-full text-sm"
             >
               <option value="">Semua Lokasi</option>
               {locations.map(loc => (
@@ -126,7 +126,7 @@ function SearchContent() {
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 bg-white text-slate-700"
+              className="form-input w-full text-sm"
             >
               <option value="all">Semua waktu</option>
               <option value="1">24 jam terakhir</option>
@@ -231,10 +231,10 @@ function SearchContent() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none"
+                className="form-input text-xs py-1.5 px-3"
               >
-                <option value="newest">Terbaru ditemukan ▾</option>
-                <option value="oldest">Terlama ditemukan ▾</option>
+                <option value="newest">Terbaru ditemukan</option>
+                <option value="oldest">Terlama ditemukan</option>
               </select>
             </div>
           </div>

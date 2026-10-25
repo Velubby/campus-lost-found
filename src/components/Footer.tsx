@@ -1,8 +1,9 @@
  'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { ShieldCheck, Mail, Phone, MapPin, Clock } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock } from 'lucide-react';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/client';
 
@@ -21,8 +22,14 @@ export default function Footer() {
         {/* Col 1 */}
         <div className="space-y-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-white/10 p-0.5">
+              <Image
+                src="/logo.svg"
+                alt="Campus Lost & Found Logo"
+                width={36}
+                height={36}
+                className="w-full h-full object-contain"
+              />
             </div>
             <span className="font-bold text-white text-lg">Campus L&amp;F</span>
           </div>

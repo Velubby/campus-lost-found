@@ -8,6 +8,7 @@ import QRCode from 'react-qr-code';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/client';
 import { fetchLatestUserReport, formatDate, type ReportEventRow, type UserReportRow, type ClaimRow, type ClaimItemRow } from '@/lib/supabase/reports';
+import { toast } from 'sonner';
 
 function TrackingContent() {
   const router = useRouter();
@@ -53,8 +54,10 @@ function TrackingContent() {
     });
     if (scheduleUpdateError) {
       setScheduleError('Jadwal belum dapat disimpan. Pastikan klaim sudah disetujui petugas.');
+      toast.error('Jadwal belum dapat disimpan. Pastikan klaim sudah disetujui petugas.');
       return;
     }
+    toast.success('Jadwal pengambilan berhasil dikonfirmasi!');
     window.location.reload();
   };
 
@@ -87,7 +90,8 @@ function TrackingContent() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-4">
         <div><h1 className="text-2xl sm:text-3xl font-extrabold text-[#123356]">Lacak Laporan</h1><p className="text-xs sm:text-sm text-slate-500 mt-1">Pembaruan laporanmu tercatat di sini.</p></div>
-        {reports.length > 1 && <label className="text-xs text-slate-600">Pilih laporan<select value={report?.id || ''} onChange={(event) => router.push(`/lacak?report=${event.target.value}`)} className="form-input ml-2 py-2"><option value="" disabled>Pilih laporan</option>{reports.map((item) => <option key={item.id} value={item.id}>{item.report_code} · {item.item_title}</option>)}</select></label>}
+        {reports.length > 1 && <label className="text-xs text-slate-600 flex items-center gap-2">Pilih laporan<select value={report?.id || ''} onChange={(event) => router.push(`/lacak?report=${event.target.value}`)} className="form-input ml-2 py-1.5 text-sm">{<option value="" disabled>Pilih laporan</option>}{reports.map((item) => <option key={item.id} value={item.id}>{item.report_code} · {item.item_title}</option>)}</select></label>}
+
         <a href="mailto:cs-lnf@kampus.ac.id" className="btn-secondary text-xs flex items-center gap-2 self-start sm:self-auto"><MessageSquare className="w-4 h-4 text-slate-600" /><span>Hubungi Petugas</span></a>
       </div>
 

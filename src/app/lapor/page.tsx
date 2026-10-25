@@ -1,8 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ShieldAlert, Upload, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ShieldAlert, Upload, CheckCircle2, ArrowRight, ArrowLeft, Copy, CheckCheck, X } from 'lucide-react';
+import {
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from '@radix-ui/react-dialog';
+import { toast } from 'sonner';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/client';
 
@@ -31,18 +40,26 @@ async function blurImageFile(file: File) {
   }
 }
 
-export default function ReportPage() {
+function ReportForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryType =
+    searchParams.get('type') === 'temuan'
+      ? 'temuan'
+      : searchParams.get('type') === 'hilang'
+      ? 'hilang'
+      : null;
 
-  const [reportType, setReportType] = useState<'hilang' | 'temuan'>(() => {
-    if (typeof window !== 'undefined') {
-      const requested = new URLSearchParams(window.location.search).get('type');
-      if (requested === 'temuan') return 'temuan';
-    }
-    return 'hilang';
-  });
+  const [selectedType, setSelectedType] = useState<'hilang' | 'temuan'>('hilang');
+  const reportType = queryType || selectedType;
+
+  const handleSwitchType = (type: 'hilang' | 'temuan') => {
+    setSelectedType(type);
+    router.replace(`/lapor?type=${type}`, { scroll: false });
+  };
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submittedReportCode, setSubmittedReportCode] = useState('');
   const [submittedReportId, setSubmittedReportId] = useState('');
@@ -95,6 +112,11 @@ export default function ReportPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!formData.setuju) {
+      toast.error('Harap setujui pernyataan sebelum mengirim laporan.');
+      return;
+    }
+
     const reportCode = `LNF-${new Date().toISOString().slice(2, 10).replaceAll('-', '')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     if (isSupabaseConfigured) {
@@ -103,6 +125,7 @@ export default function ReportPage() {
 
       if (!user) {
         setSubmitError('Silakan masuk terlebih dahulu sebelum mengirim laporan.');
+        toast.error('Silakan masuk terlebih dahulu sebelum mengirim laporan.');
         return;
       }
 
@@ -114,6 +137,7 @@ export default function ReportPage() {
         const { error: uploadError } = await supabase.storage.from('item-images').upload(imagePath, uploadFile, { contentType: uploadFile.type, upsert: false });
         if (uploadError) {
           setSubmitError('Foto belum dapat diunggah. Pastikan bucket item-images sudah dibuat.');
+          toast.error('Foto belum dapat diunggah. Pastikan bucket item-images sudah dibuat.');
           return;
         }
         imageUrl = supabase.storage.from('item-images').getPublicUrl(imagePath).data.publicUrl;
@@ -135,6 +159,7 @@ export default function ReportPage() {
 
       if (error || !savedReport) {
         setSubmitError('Laporan belum dapat disimpan. Periksa koneksi lalu coba lagi.');
+        toast.error('Laporan belum dapat disimpan. Periksa koneksi lalu coba lagi.');
         return;
       }
 
@@ -145,6 +170,16 @@ export default function ReportPage() {
     setSubmittedReportCode(reportCode);
     setSubmitError('');
     setIsSuccess(true);
+    toast.success('Laporan berhasil dikirim!');
+    setFormData((prev) => ({
+      ...prev,
+      namaBarang: '',
+      lokasi: '',
+      deskripsiPublik: '',
+      ciriRahasia: '',
+    }));
+    setImageFile(null);
+    setCurrentStep(1);
   };
 
   return (
@@ -168,14 +203,14 @@ export default function ReportPage() {
         <div className="segmented-control p-1 bg-slate-200/70 rounded-2xl">
           <button
             type="button"
-            onClick={() => setReportType('hilang')}
+            onClick={() => handleSwitchType('hilang')}
             className={`segmented-control-btn px-6 py-2 ${reportType === 'hilang' ? 'active' : ''}`}
           >
             Barang Hilang
           </button>
           <button
             type="button"
-            onClick={() => setReportType('temuan')}
+            onClick={() => handleSwitchType('temuan')}
             className={`segmented-control-btn px-6 py-2 ${reportType === 'temuan' ? 'active' : ''}`}
           >
             Barang Ditemukan
@@ -200,46 +235,12 @@ export default function ReportPage() {
 
       {/* Main Card Form */}
       <div className="apple-card p-6 sm:p-8 bg-white">
-        
-        {isSuccess ? (
-          <div className="text-center py-8 space-y-5">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center">
-              <CheckCircle2 className="w-8 h-8" />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {submitError && (
+            <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+              {submitError}
             </div>
-            <div>
-              <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest block mb-1">
-                Laporan Berhasil Disimpan
-              </span>
-              <h2 className="text-2xl font-extrabold text-[#123356]">
-                Nomor Tiket: {submittedReportCode || 'Menunggu kode laporan'}
-              </h2>
-              <p className="text-xs text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">
-                Terima kasih, laporan Anda telah diterima. Sistem sedang mencocokkan ciri barang dengan laporan temuan yang ada.
-              </p>
-            </div>
-
-            <div className="pt-4 flex flex-col sm:flex-row justify-center gap-3">
-              <button
-                onClick={() => router.push(submittedReportId ? `/lacak?report=${submittedReportId}` : '/lacak')}
-                className="btn-primary text-xs py-2.5 px-5"
-              >
-                Lacak Status Laporan Ini
-              </button>
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="btn-secondary text-xs py-2.5 px-5"
-              >
-                Kembali ke Dashboard
-              </button>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {submitError && (
-              <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
-                {submitError}
-              </div>
-            )}
+          )}
             
             {/* Step 1: Detail Barang */}
             {currentStep === 1 && (
@@ -328,8 +329,8 @@ export default function ReportPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!formData.namaBarang || !formData.lokasi) {
-                        alert('Harap isi nama barang dan lokasi terlebih dahulu.');
+                      if (!formData.namaBarang.trim() || !formData.lokasi.trim()) {
+                        toast.error('Harap isi nama barang dan lokasi terlebih dahulu.');
                         return;
                       }
                       setCurrentStep(2);
@@ -394,6 +395,7 @@ export default function ReportPage() {
                       const file = event.target.files?.[0] || null;
                       if (file && file.size > 5 * 1024 * 1024) {
                         setSubmitError('Ukuran foto maksimal 5MB.');
+                        toast.error('Ukuran foto maksimal 5MB.');
                         return;
                       }
                       setSubmitError('');
@@ -413,7 +415,13 @@ export default function ReportPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setCurrentStep(3)}
+                    onClick={() => {
+                      if (!formData.deskripsiPublik.trim()) {
+                        toast.error('Harap isi deskripsi publik terlebih dahulu.');
+                        return;
+                      }
+                      setCurrentStep(3);
+                    }}
                     className="btn-primary text-xs"
                   >
                     <span>Lanjut ke Konfirmasi</span>
@@ -499,10 +507,104 @@ export default function ReportPage() {
             )}
 
           </form>
-        )}
 
       </div>
 
+      {/* Success Modal Pop-up */}
+      <Dialog open={isSuccess} onOpenChange={setIsSuccess}>
+        <DialogPortal>
+          <DialogOverlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 animate-in fade-in-0" />
+          <DialogContent className="fixed left-[50%] top-[50%] z-50 w-[calc(100%-2rem)] max-w-md translate-x-[-50%] translate-y-[-50%] bg-white rounded-3xl shadow-2xl p-6 sm:p-7 border border-slate-100 text-center space-y-5 animate-in zoom-in-95">
+            <button
+              type="button"
+              onClick={() => setIsSuccess(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors"
+              aria-label="Tutup modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-13 h-13 rounded-2xl bg-emerald-50 text-emerald-600 ring-6 ring-emerald-50/70 mx-auto flex items-center justify-center">
+              <CheckCircle2 className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-widest block">
+                Laporan Berhasil Disimpan
+              </span>
+              <DialogTitle className="text-xl sm:text-2xl font-black text-[#123356] tracking-tight">
+                Laporan Anda Telah Terdaftar
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                Petugas posko keamanan akan memverifikasi dan mencocokkan ciri barang Anda di sistem kampus.
+              </DialogDescription>
+            </div>
+
+            {/* Dedicated Ticket Code Card */}
+            <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-left">
+              <div className="space-y-0.5 min-w-0">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Nomor Tiket Resmi
+                </span>
+                <span className="font-mono text-base sm:text-lg font-extrabold text-[#123356] tracking-wider block truncate select-all">
+                  {submittedReportCode || 'Menunggu kode laporan'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!submittedReportCode) return;
+                  navigator.clipboard.writeText(submittedReportCode);
+                  setIsCopied(true);
+                  toast.success(`Nomor tiket ${submittedReportCode} disalin`);
+                  setTimeout(() => setIsCopied(false), 2000);
+                }}
+                title="Salin nomor tiket"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all bg-white hover:bg-sky-50 text-sky-800 border border-slate-200 shadow-2xs hover:border-sky-300 min-h-[38px] shrink-0"
+              >
+                {isCopied ? (
+                  <>
+                    <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="text-emerald-700">Tersalin</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Salin</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row justify-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => router.push(submittedReportId ? `/lacak?report=${submittedReportId}` : '/lacak')}
+                className="btn-primary text-xs py-2.5 px-4 shadow-sm min-h-[44px] flex-1 inline-flex items-center justify-center gap-1.5 font-bold"
+              >
+                <span>Lacak Status Laporan</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard')}
+                className="btn-secondary text-xs py-2.5 px-4 min-h-[44px] flex-1 font-semibold"
+              >
+                Kembali ke Dashboard
+              </button>
+            </div>
+          </DialogContent>
+        </DialogPortal>
+      </Dialog>
+
     </div>
+  );
+}
+
+export default function ReportPage() {
+  return (
+    <Suspense fallback={<div className="max-w-3xl mx-auto px-4 py-16 text-center text-slate-500">Memuat formulir laporan...</div>}>
+      <ReportForm />
+    </Suspense>
   );
 }

@@ -9,6 +9,11 @@ import { Toaster } from 'sonner';
 export const metadata: Metadata = {
   title: 'Campus Lost & Found | Layanan Resmi Kampus',
   description: 'Portal resmi Lost & Found Kampus untuk mencari, melaporkan, dan mengklaim barang hilang dengan aman, transparan, dan terpercaya.',
+  icons: {
+    icon: '/logo.svg',
+    shortcut: '/logo.svg',
+    apple: '/logo.svg',
+  },
 };
 
 export default function RootLayout({

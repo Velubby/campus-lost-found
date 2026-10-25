@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, ShieldCheck, LogOut, Settings } from 'lucide-react';
+import { Search, LogOut, Settings } from 'lucide-react';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -46,6 +48,7 @@ export default function Navbar() {
       window.localStorage.removeItem('campus-lnf-user');
     }
     setMenuOpen(false);
+    toast.success('Berhasil keluar dari akun');
     router.push('/masuk');
     router.refresh();
   };
@@ -57,8 +60,15 @@ export default function Navbar() {
         {/* Left: Brand */}
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-[#123356] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105">
-              <ShieldCheck className="w-4 h-4 text-sky-400" />
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 shrink-0 overflow-hidden">
+              <Image
+                src="/logo.svg"
+                alt="Campus Lost & Found Logo"
+                width={36}
+                height={36}
+                className="w-full h-full object-contain"
+                priority
+              />
             </div>
             <div className="flex flex-col">
               <span className="font-bold text-[1.05rem] text-[#123356] tracking-tight leading-none">
@@ -102,7 +112,7 @@ export default function Navbar() {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
               }`}
             >
-              Cari Barang
+              {profile?.role === 'satpam' ? 'List Barang' : 'Cari Barang'}
             </Link>
             {profile && <Link
               href="/lapor"
@@ -142,8 +152,8 @@ export default function Navbar() {
           <Link
             href="/cari"
             className="hidden sm:inline-flex items-center justify-center w-9 h-9 rounded-lg hover:bg-black/6 text-slate-500 transition-all"
-            title="Cari Barang"
-            aria-label="Cari Barang"
+            title={profile?.role === 'satpam' ? 'List Barang' : 'Cari Barang'}
+            aria-label={profile?.role === 'satpam' ? 'List Barang' : 'Cari Barang'}
           >
             <Search className="w-4.5 h-4.5" />
           </Link>
