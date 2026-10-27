@@ -141,7 +141,7 @@ export default function MyReportsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          <Link href="/lapor" className="btn-primary text-xs flex items-center gap-2 min-h-[44px]">
+          <Link href="/lapor" className="btn-primary text-xs flex items-center gap-2 min-h-11">
             <Plus className="w-4 h-4" />
             <span>Buat Laporan Baru</span>
           </Link>
@@ -262,7 +262,7 @@ export default function MyReportsPage() {
                   key={st}
                   type="button"
                   onClick={() => setStatusFilter(st)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all min-h-[38px] ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all min-h-9.5 ${
                     statusFilter === st
                       ? 'bg-[#123356] text-white shadow-xs'
                       : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
@@ -408,7 +408,7 @@ export default function MyReportsPage() {
                       {report.status !== 'draf' && (
                         <Link
                           href={`/lacak?report=${report.id}`}
-                          className="btn-primary text-xs py-2 px-4 flex items-center justify-center gap-1.5 min-h-[40px] w-full sm:w-auto"
+                          className="btn-primary text-xs py-2 px-4 flex items-center justify-center gap-1.5 min-h-10 w-full sm:w-auto"
                         >
                           <span>Lacak Status &amp; Linimasa</span>
                         </Link>
@@ -421,7 +421,7 @@ export default function MyReportsPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => deleteDraft(report.id)}
-                            className="text-xs text-rose-600 hover:bg-rose-50 border-rose-200 min-h-[40px]"
+                            className="text-xs text-rose-600 hover:bg-rose-50 border-rose-200 min-h-10"
                             title="Hapus draf laporan"
                           >
                             <Trash2 className="w-4 h-4 mr-1" />
@@ -434,7 +434,7 @@ export default function MyReportsPage() {
                         href="https://wa.me/6281234567890?text=Halo%20Petugas%20Keamanan%20Kampus,%20saya%20ingin%20menanyakan%20status%20laporan%20saya"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="btn-secondary text-xs py-2 px-3.5 flex items-center justify-center gap-1.5 min-h-[40px] w-full sm:w-auto text-slate-700 hover:text-slate-900"
+                        className="btn-secondary text-xs py-2 px-3.5 flex items-center justify-center gap-1.5 min-h-10 w-full sm:w-auto text-slate-700 hover:text-slate-900"
                         title="Hubungi posko keamanan kampus"
                       >
                         <MessageCircle className="w-4 h-4 text-emerald-600" />
@@ -560,14 +560,14 @@ export default function MyReportsPage() {
                     <div className="flex flex-wrap sm:flex-col items-center sm:items-end gap-2 w-full lg:w-auto shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
                       <Link
                         href={`/lacak?ticket=${claim.ticket_code}`}
-                        className="btn-primary text-xs py-2 px-4 flex items-center justify-center gap-1.5 min-h-[40px] w-full sm:w-auto"
+                        className="btn-primary text-xs py-2 px-4 flex items-center justify-center gap-1.5 min-h-10 w-full sm:w-auto"
                       >
                         <span>Buka Tiket Pengambilan</span>
                       </Link>
 
                       <Link
                         href={`/barang/${claim.item_id}`}
-                        className="btn-secondary text-xs py-2 px-3.5 flex items-center justify-center gap-1.5 min-h-[40px] w-full sm:w-auto text-slate-700 hover:text-slate-900"
+                        className="btn-secondary text-xs py-2 px-3.5 flex items-center justify-center gap-1.5 min-h-10 w-full sm:w-auto text-slate-700 hover:text-slate-900"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         <span>Detail Barang</span>

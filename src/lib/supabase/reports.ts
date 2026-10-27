@@ -94,16 +94,26 @@ export async function fetchUserReports() {
   return { user, reports: (reports || []) as UserReportRow[], claims: mappedClaims };
 }
 
+function selectLatestUserReport(reports: UserReportRow[], claims: ClaimRow[], reportId?: string) {
+  const directClaim = !reportId ? claims.find((item) => !item.report_id) : null;
+  if (directClaim) return { directClaim, report: null, claim: directClaim };
+
+  const report = (reportId ? reports.find((item) => item.id === reportId) : reports[0]) || null;
+  const claim = report
+    ? claims.filter((item) => item.report_id === report.id)[0] || null
+    : claims[0] || null;
+
+  return { directClaim: null, report, claim };
+}
+
 export async function fetchLatestUserReport(reportId?: string) {
   const { user, reports, claims } = await fetchUserReports();
-  const directClaim = !reportId ? claims.find((item) => !item.report_id) : null;
+  const { directClaim, report, claim } = selectLatestUserReport(reports, claims, reportId);
   if (directClaim) {
     const { data: claimItem } = await createClient().from('items').select('id, title, location').eq('id', directClaim.item_id).maybeSingle();
     return { user, reports, report: null, events: [] as ReportEventRow[], claim: directClaim, claimItem: (claimItem || null) as ClaimItemRow | null };
   }
-  const report = (reportId ? reports.find((item) => item.id === reportId) : reports[0]) || null;
   if (!report) {
-    const claim = claims[0] || null;
     if (!claim) return { user, reports, report: null, events: [] as ReportEventRow[], claim: null, claimItem: null };
     const { data: claimItem } = await createClient().from('items').select('id, title, location').eq('id', claim.item_id).maybeSingle();
     return { user, reports, report: null, events: [] as ReportEventRow[], claim, claimItem: (claimItem || null) as ClaimItemRow | null };
@@ -112,7 +122,7 @@ export async function fetchLatestUserReport(reportId?: string) {
   const supabase = createClient();
   const [{ data: events, error: eventsError }, { data: reportClaims, error: claimsError }] = await Promise.all([
     supabase.from('report_events').select('id, title, description, created_at').eq('report_id', report.id).order('created_at', { ascending: true }),
-    Promise.resolve({ data: claims.filter((claim) => claim.report_id === report.id), error: null }),
+    Promise.resolve({ data: claim ? [claim] : [], error: null }),
   ]);
 
   if (eventsError) throw eventsError;
