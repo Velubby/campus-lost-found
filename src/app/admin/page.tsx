@@ -467,7 +467,7 @@ export default function AdminPage() {
 
       {/* MODALS */}
       <ClaimDetailModal
-        key={viewingClaim?.id || 'none'}
+        key={viewingClaim?.id || 'claim-detail-modal'}
         claim={viewingClaim}
         onClose={() => setViewingClaim(null)}
         onApprove={(claimId, location) => handleSingleUpdate(claimId, 'disetujui', location)}
@@ -481,7 +481,7 @@ export default function AdminPage() {
       />
 
       <RejectClaimModal
-        key={rejectingClaim?.id || 'none'}
+        key={rejectingClaim?.id || 'reject-claim-modal'}
         claim={rejectingClaim}
         onClose={() => setRejectingClaim(null)}
         onConfirm={handleConfirmReject}
@@ -567,7 +567,7 @@ export default function AdminPage() {
       />
 
       <CustodyChainModal
-        key={markingFoundReport?.id || 'none'}
+        key={markingFoundReport?.id || 'custody-chain-modal'}
         report={markingFoundReport}
         onClose={() => setMarkingFoundReport(null)}
         onConfirm={handleConfirmMarkFound}

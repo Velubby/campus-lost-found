@@ -58,7 +58,14 @@ function SearchContent() {
       timeRange === 'all' || !now
         ? null
         : new Date(now - Number(timeRange) * 24 * 60 * 60 * 1000);
+
     return items.filter(item => {
+      // Exclude items that are claimed, approved, or completed
+      const itemStatus = (item as CatalogItem & { status?: string }).status;
+      if (itemStatus && ['diklaim', 'disetujui', 'selesai'].includes(itemStatus.toLowerCase())) {
+        return false;
+      }
+
       // Query filter
       const q = query.toLowerCase().trim();
       const matchQuery = !q ||

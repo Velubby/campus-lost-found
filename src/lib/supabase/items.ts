@@ -47,6 +47,8 @@ export async function fetchCatalogItems(options?: { withinHours?: number }) {
   let query = createClient()
     .from('items')
     .select('id, title, category, location, found_at, image_url, description, status')
+    .neq('status', 'Klaim Disetujui')
+    .neq('status', 'Selesai')
     .order('found_at', { ascending: false });
 
   if (options?.withinHours) {
