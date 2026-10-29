@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Search, PlusCircle, PackageSearch, FileText, Clock, ArrowRight } from 'lucide-react';
-import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { getCurrentUser } from '@/lib/supabase/auth';
 import { createClient } from '@/lib/supabase/client';
 import { fetchLatestUserReport, formatDate, type UserReportRow } from '@/lib/supabase/reports';
 
@@ -13,13 +13,11 @@ export default function DashboardPage() {
   const [latestReport, setLatestReport] = useState<UserReportRow | null>(null);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
-
-    const supabase = createClient();
     const loadDashboard = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       setUserName(user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Pengguna kampus');
       if (user) {
+        const supabase = createClient();
         const { count } = await supabase
           .from('reports')
           .select('id', { count: 'exact', head: true })

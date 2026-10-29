@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRight, Check, CheckCircle2, MessageSquare } from 'lucide-react';
 import QRCode from 'react-qr-code';
-import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/client';
 import { fetchLatestUserReport, formatDate, type ReportEventRow, type UserReportRow, type ClaimRow, type ClaimItemRow } from '@/lib/supabase/reports';
 import { toast } from 'sonner';
@@ -55,14 +54,10 @@ function TrackingContent() {
   const [claimItem, setClaimItem] = useState<ClaimItemRow | null>(null);
   const [pickupAtInput, setPickupAtInput] = useState('');
   const [scheduleError, setScheduleError] = useState('');
-  const [isLoading, setIsLoading] = useState(() => isSupabaseConfigured);
-  const [error, setError] = useState(() => (isSupabaseConfigured ? '' : 'Supabase belum dikonfigurasi.'));
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      return;
-    }
-
     fetchLatestUserReport(requestedReportId)
       .then((result) => {
         if (!result.user) {

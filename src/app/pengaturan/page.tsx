@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Save, UserRound } from 'lucide-react';
-import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { getCurrentUser } from '@/lib/supabase/auth';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
@@ -16,16 +16,11 @@ export default function SettingsPage() {
   const [studyProgram, setStudyProgram] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
-  const [error, setError] = useState(() => (isSupabaseConfigured ? '' : 'Supabase belum dikonfigurasi.'));
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      return;
-    }
-
     const loadProfile = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) {
         router.replace('/masuk');
         return;
@@ -33,6 +28,7 @@ export default function SettingsPage() {
 
       setEmail(user.email || '');
       setName(user.user_metadata?.full_name || '');
+      const supabase = createClient();
       const { data: profile } = await supabase.from('profiles').select('full_name, phone, student_number, faculty, study_program').eq('id', user.id).maybeSingle();
       if (profile) {
         setName(profile.full_name);
@@ -50,14 +46,14 @@ export default function SettingsPage() {
     event.preventDefault();
     setMessage('');
     setError('');
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getCurrentUser();
 
     if (!user) {
       router.replace('/masuk');
       return;
     }
 
+    const supabase = createClient();
     const [{ error: profileError }, { error: authError }] = await Promise.all([
       supabase.from('profiles').upsert({ id: user.id, full_name: name, phone, student_number: studentNumber, faculty, study_program: studyProgram }, { onConflict: 'id' }),
       supabase.auth.updateUser({ data: { full_name: name, student_number: studentNumber, faculty, study_program: studyProgram } }),

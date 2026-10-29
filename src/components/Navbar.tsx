@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, LogOut, Settings } from 'lucide-react';
-import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { signOutUser } from '@/lib/supabase/auth';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
@@ -13,12 +13,10 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [profile, setProfile] = useState<{ name: string; initials: string; role: string } | null>(null);
-  const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
+  const [authReady, setAuthReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
-
     const supabase = createClient();
     const loadUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -42,11 +40,7 @@ export default function Navbar() {
   const isAuthPage = pathname === '/masuk' || pathname === '/daftar';
 
   const handleLogout = async () => {
-    if (isSupabaseConfigured) {
-      await createClient().auth.signOut();
-    } else {
-      window.localStorage.removeItem('campus-lnf-user');
-    }
+    await signOutUser();
     setMenuOpen(false);
     toast.success('Berhasil keluar dari akun');
     router.push('/masuk');

@@ -4,8 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Lock, Mail, UserRound } from 'lucide-react';
-import { isSupabaseConfigured } from '@/lib/supabase/config';
-import { createClient } from '@/lib/supabase/client';
+import { signUpUser } from '@/lib/supabase/auth';
 import { toast } from 'sonner';
 
 export default function RegisterPage() {
@@ -17,6 +16,7 @@ export default function RegisterPage() {
   const [faculty, setFaculty] = useState('');
   const [studyProgram, setStudyProgram] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -33,20 +33,23 @@ export default function RegisterPage() {
       return;
     }
 
-    if (isSupabaseConfigured) {
-      const { error: signUpError } = await createClient().auth.signUp({
-        email,
-        password,
-        options: { data: { full_name: name, student_number: studentNumber, faculty, study_program: studyProgram } },
-      });
+    setIsLoading(true);
+    setError('');
 
-      if (signUpError) {
-        setError(signUpError.message);
-        toast.error(signUpError.message);
-        return;
-      }
-    } else {
-      window.localStorage.setItem('campus-lnf-user', JSON.stringify({ name, email, password }));
+    const { error: signUpError } = await signUpUser({
+      email,
+      password,
+      fullName: name,
+      studentNumber,
+      faculty,
+      studyProgram,
+    });
+
+    if (signUpError) {
+      setError(signUpError.message);
+      toast.error(signUpError.message);
+      setIsLoading(false);
+      return;
     }
 
     toast.success('Pendaftaran akun berhasil! Silakan masuk.');
@@ -100,8 +103,8 @@ export default function RegisterPage() {
             </div>
           </label>
 
-          <button type="submit" className="w-full btn-primary py-3 justify-center">
-            <span>Buat Akun</span>
+          <button type="submit" disabled={isLoading} className="w-full btn-primary py-3 justify-center disabled:opacity-50">
+            <span>{isLoading ? 'Mendaftarkan akun...' : 'Buat Akun'}</span>
             <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </button>
         </form>

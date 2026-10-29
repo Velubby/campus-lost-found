@@ -4,15 +4,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { Mail, Phone, MapPin, Clock } from 'lucide-react';
-import { isSupabaseConfigured } from '@/lib/supabase/config';
-import { createClient } from '@/lib/supabase/client';
+import { getCurrentUser } from '@/lib/supabase/auth';
 
 export default function Footer() {
-  const [isAuthenticated, setIsAuthenticated] = useState(!isSupabaseConfigured);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
-    createClient().auth.getUser().then(({ data: { user } }) => setIsAuthenticated(Boolean(user)));
+    getCurrentUser().then((user) => setIsAuthenticated(Boolean(user)));
   }, []);
 
   return (

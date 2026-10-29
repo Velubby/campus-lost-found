@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { isSupabaseConfigured } from '@/lib/supabase/config';
 import {
   fetchUserReports,
   formatDate,
@@ -59,15 +58,11 @@ export default function MyReportsPage() {
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('semua');
   const [reports, setReports] = useState<UserReportRow[]>([]);
   const [claims, setClaims] = useState<ClaimRow[]>([]);
-  const [isLoading, setIsLoading] = useState(() => isSupabaseConfigured);
-  const [error, setError] = useState(() => (isSupabaseConfigured ? '' : 'Supabase belum dikonfigurasi.'));
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      return;
-    }
-
     fetchUserReports()
       .then(({ user, reports: userReports, claims: userClaims }) => {
         if (!user) {

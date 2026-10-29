@@ -5,7 +5,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Search, PlusCircle, ArrowRight, ShieldCheck, Clock, MapPin, Sparkles } from 'lucide-react';
-import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { fetchCatalogItems, type CatalogItem } from '@/lib/supabase/items';
 
 export default function HomePage() {
@@ -15,8 +14,6 @@ export default function HomePage() {
   const [catalogError, setCatalogError] = useState('');
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
-
     fetchCatalogItems({ withinHours: 24 })
       .then((items) => setRecentItems(items.slice(0, 4)))
       .catch(() => setCatalogError('Katalog belum dapat dimuat. Coba lagi nanti.'));

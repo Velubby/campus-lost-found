@@ -5,8 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
-import { isSupabaseConfigured } from '@/lib/supabase/config';
-import { createClient } from '@/lib/supabase/client';
+import { signInUser } from '@/lib/supabase/auth';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
@@ -16,29 +15,21 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSupabaseConfigured) {
-      const { error: signInError } = await createClient().auth.signInWithPassword({ email, password });
-      if (signInError) {
-        setError('Email atau password belum sesuai.');
-        toast.error('Email atau password belum sesuai.');
-        return;
-      }
-    } else {
-      const savedUser = window.localStorage.getItem('campus-lnf-user');
-      const user = savedUser ? JSON.parse(savedUser) as { email: string; password: string } : null;
-      const isDemoAccount = email === 'alya.putri@mahasiswa.kampus.ac.id' && password === 'kampus123';
+    setIsLoading(true);
+    setError('');
 
-      if (!isDemoAccount && (!user || user.email !== email || user.password !== password)) {
-        setError('Email atau password belum sesuai. Gunakan akun terdaftar atau akun demo.');
-        toast.error('Email atau password belum sesuai.');
-        return;
-      }
+    const { error: signInError } = await signInUser(email, password);
+    if (signInError) {
+      setError('Email atau password belum sesuai.');
+      toast.error('Email atau password belum sesuai.');
+      setIsLoading(false);
+      return;
     }
 
-    setError('');
     toast.success('Berhasil masuk ke akun');
     router.push('/dashboard');
   };
@@ -164,9 +155,10 @@ export default function LoginPage() {
             {/* Submit */}
             <button
               type="submit"
-              className="w-full btn-primary py-3 justify-center shadow-md"
+              disabled={isLoading}
+              className="w-full btn-primary py-3 justify-center shadow-md disabled:opacity-50"
             >
-              <span>Masuk ke Akun Kampus</span>
+              <span>{isLoading ? 'Memeriksa kredensial...' : 'Masuk ke Akun Kampus'}</span>
               <ArrowRight className="w-4 h-4" aria-hidden="true" />
             </button>
           </form>

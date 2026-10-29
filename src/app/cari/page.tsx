@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Search, MapPin, Clock, Filter, RotateCcw, AlertCircle } from 'lucide-react';
-import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { fetchCatalogItems, type CatalogItem } from '@/lib/supabase/items';
 
 function SearchContent() {
@@ -19,16 +18,12 @@ function SearchContent() {
   const [sortBy, setSortBy] = useState('newest');
   const [timeRange, setTimeRange] = useState('all');
   const [items, setItems] = useState<CatalogItem[]>([]);
-  const [isLoading, setIsLoading] = useState(() => isSupabaseConfigured);
+  const [isLoading, setIsLoading] = useState(true);
   const [catalogError, setCatalogError] = useState('');
   // Captured once at mount — stable, no re-renders
   const [now] = useState(Date.now);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      return;
-    }
-
     fetchCatalogItems()
       .then(setItems)
       .catch(() => setCatalogError('Katalog belum dapat dimuat. Coba lagi nanti.'))

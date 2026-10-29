@@ -12,7 +12,6 @@ import {
   DialogDescription,
 } from '@radix-ui/react-dialog';
 import { toast } from 'sonner';
-import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/client';
 
 async function blurImageFile(file: File) {
@@ -64,7 +63,7 @@ function ReportForm() {
   const [submittedReportCode, setSubmittedReportCode] = useState('');
   const [submittedReportId, setSubmittedReportId] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [authChecked, setAuthChecked] = useState(!isSupabaseConfigured);
+  const [authChecked, setAuthChecked] = useState(false);
   const predefinedCategories = ['Elektronik', 'Dokumen', 'Aksesoris', 'Tas & Pakaian', 'Lainnya'];
 
   const toJakartaIso = (date: string, time: string) =>
@@ -85,8 +84,6 @@ function ReportForm() {
   });
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
-
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (!user) {
         router.replace('/masuk?next=/lapor');
@@ -119,15 +116,14 @@ function ReportForm() {
 
     const reportCode = `LNF-${new Date().toISOString().slice(2, 10).replaceAll('-', '')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    if (isSupabaseConfigured) {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-      if (!user) {
-        setSubmitError('Silakan masuk terlebih dahulu sebelum mengirim laporan.');
-        toast.error('Silakan masuk terlebih dahulu sebelum mengirim laporan.');
-        return;
-      }
+    if (!user) {
+      setSubmitError('Silakan masuk terlebih dahulu sebelum mengirim laporan.');
+      toast.error('Silakan masuk terlebih dahulu sebelum mengirim laporan.');
+      return;
+    }
 
       let imageUrl: string | null = null;
       if (imageFile) {
@@ -164,8 +160,6 @@ function ReportForm() {
       }
 
       setSubmittedReportId(savedReport.id);
-
-    }
 
     setSubmittedReportCode(reportCode);
     setSubmitError('');

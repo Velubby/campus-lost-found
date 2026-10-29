@@ -58,3 +58,40 @@ export async function fetchCatalogItems(options?: { withinHours?: number }) {
   if (error) throw error;
   return (data as ItemRow[]).map(mapItem);
 }
+
+export async function fetchCatalogItemById(id: string): Promise<CatalogItem | null> {
+  const { data, error } = await createClient()
+    .from('items')
+    .select('id, title, category, location, found_at, image_url, description, status')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapItem(data as ItemRow);
+}
+
+export async function submitItemClaim(input: {
+  itemId: string;
+  userId: string;
+  privateAnswers: string;
+  contactPhone: string;
+}) {
+  const supabase = createClient();
+  const ticketCode = `TKT-${new Date().toISOString().slice(2, 10).replaceAll('-', '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+  const { data, error } = await supabase
+    .from('claims')
+    .insert({
+      item_id: input.itemId,
+      user_id: input.userId,
+      private_answers: input.privateAnswers,
+      contact_phone: input.contactPhone,
+      ticket_code: ticketCode,
+    })
+    .select('id, ticket_code')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+

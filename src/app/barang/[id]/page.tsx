@@ -5,9 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, MapPin, Calendar, Clock, ShieldCheck, CheckCircle2, X } from 'lucide-react';
-import { isSupabaseConfigured } from '@/lib/supabase/config';
-import { fetchCatalogItems, type CatalogItem } from '@/lib/supabase/items';
-import { createClient } from '@/lib/supabase/client';
+import { fetchCatalogItemById, submitItemClaim, type CatalogItem } from '@/lib/supabase/items';
+import { getCurrentUser, getUserProfile } from '@/lib/supabase/auth';
 import { toast } from 'sonner';
 
 function ItemDetailContent() {
@@ -16,16 +15,11 @@ function ItemDetailContent() {
   const itemId = params.id as string;
 
   const [item, setItem] = useState<CatalogItem | null>(null);
-  const [itemError, setItemError] = useState(() => (isSupabaseConfigured ? '' : 'Supabase belum dikonfigurasi.'));
+  const [itemError, setItemError] = useState('');
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      return;
-    }
-
-    fetchCatalogItems()
-      .then((items) => {
-        const foundItem = items.find((catalogItem) => catalogItem.id === itemId);
+    fetchCatalogItemById(itemId)
+      .then((foundItem) => {
         if (foundItem) setItem(foundItem);
         else setItemError('Barang tidak ditemukan.');
       })
@@ -46,38 +40,29 @@ function ItemDetailContent() {
     e.preventDefault();
     if (!item) return;
 
-    if (!isSupabaseConfigured) {
-      setClaimError('Supabase belum dikonfigurasi.');
-      toast.error('Supabase belum dikonfigurasi.');
-      return;
-    }
-
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getCurrentUser();
     if (!user) {
       setClaimError('Silakan masuk atau buat akun terlebih dahulu untuk mengajukan klaim.');
       toast.error('Silakan masuk terlebih dahulu untuk mengajukan klaim.');
       return;
     }
 
-    const { data: profile } = await supabase.from('profiles').select('phone').eq('id', user.id).maybeSingle();
-    const contactPhone = claimAnswers.kontak || profile?.phone || '';
+    const profile = await getUserProfile(user.id);
+    const contactPhone = claimAnswers.kontak || profile?.phone_number || '';
     if (!contactPhone) {
       setClaimError('Lengkapi nomor telepon di Pengaturan akun terlebih dahulu.');
       toast.error('Lengkapi nomor telepon di Pengaturan akun terlebih dahulu.');
       return;
     }
 
-    const ticketCode = `TKT-${new Date().toISOString().slice(2, 10).replaceAll('-', '')}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const { error } = await supabase.from('claims').insert({
-      item_id: item.id,
-      user_id: user.id,
-      private_answers: `${claimAnswers.ciriKhusus}\n${claimAnswers.isiBarang}`,
-      contact_phone: contactPhone,
-      ticket_code: ticketCode,
-    });
-
-    if (error) {
+    try {
+      await submitItemClaim({
+        itemId: item.id,
+        userId: user.id,
+        privateAnswers: `${claimAnswers.ciriKhusus}\n${claimAnswers.isiBarang}`,
+        contactPhone,
+      });
+    } catch {
       setClaimError('Klaim belum dapat disimpan. Coba lagi nanti.');
       toast.error('Klaim belum dapat disimpan. Coba lagi nanti.');
       return;
