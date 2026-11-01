@@ -1,115 +1,83 @@
-# Campus Lost & Found
+# Lost & Found
 
-Portal layanan digital terpadu kampus untuk pencarian barang temuan, pelaporan barang hilang, pengajuan klaim kepemilikan, dan pelacakan proses serah terima barang dengan aman dan transparan.
+Aplikasi untuk melaporkan barang hilang atau temuan, mengajukan klaim kepemilikan, dan mengikuti proses pengembaliannya.
 
----
+## Tentang aplikasi
 
-## 🌟 Fitur Utama
+Informasi barang hilang dan temuan dikumpulkan di satu tempat agar pengguna dapat mencari barang dan memantau laporannya. Pengguna memberikan ciri kepemilikan saat mengajukan klaim, lalu petugas memeriksa informasi tersebut dan mengatur pengambilan barang.
 
-### 1. Portal Pengguna (Mahasiswa & Civitas Kampus)
-- **Katalog & Pencarian Barang Temuan (`/cari`):**
-  - Pencarian cepat dengan filter kategori (Elektronik, Dokumen, Aksesoris, Tas, dll.).
-  - Filter lokasi temuan kampus dan rentang waktu.
-  - Sorting berdasarkan waktu ditemukan terbaru/terlama.
-  - Modal detail barang & form pengajuan klaim kepemilikan langsung.
-- **Form Pelaporan Cerdas (`/lapor`):**
-  - Auto-switch form jenis laporan (*Barang Hilang* vs *Barang Temuan*) via URL parameter (`?type=hilang` / `?type=temuan`).
-  - Unggah foto barang ke Supabase Storage (`item-images`) dengan validasi ukuran & format.
-  - Popup modal konfirmasi sukses laporan dengan kode tiket dan tombol salin cepat.
-- **Menu Laporan Saya (`/laporan-saya`):**
-  - Navigasi tab terpisah: **Barang Hilang Saya**, **Barang Temuan Saya**, dan **Klaim Barang Temuan**.
-  - Sub-filter status laporan (Semua, Menunggu Verifikasi, Sedang Dicari, Ditemukan, Selesai, Ditolak).
-  - Banner notifikasi langsung jika barang hilang telah berhasil ditemukan oleh petugas.
-- **Lacak Laporan Realtime (`/lacak`):**
-  - Pelacak progres bertahap (Dibuat &rarr; Diverifikasi &rarr; Dicari &rarr; Ditemukan &rarr; Klaim &rarr; Serah Terima).
-  - Riwayat aktivitas/log peristiwa terkini dan pemilih multi-laporan.
-- **Profil & Akun Pengguna (`/pengaturan`):**
-  - Pengaturan profil (nama lengkap, nomor telepon / WhatsApp) terintegrasi Supabase Auth.
+## Fitur utama
 
-### 2. Panel Petugas / Keamanan (`/admin`)
-- **Dashboard Ringkasan Operasional:**
-  - Monitoring metrik laporan baru, barang tersimpan, klaim pending, dan serah terima.
-- **Pencatatan Rantai Penjagaan (*Chain of Custody*):**
-  - Form pencatatan data identitas penemu saat barang diterima di pos satpam/petugas.
-- **Verifikasi Klaim & SOP Keamanan:**
-  - *Blind Verification SOP Checklist* untuk memastikan kecocokan ciri khusus sebelum klaim disetujui.
-  - Dialog tolak klaim dengan pencatatan alasan penolakan.
-  - Fitur **"Tinjau Kembali" (*Reopen*)** untuk memulihkan klaim yang ditolak jika terjadi missclick dari petugas.
-- **Pemanggilan Pemilik & Serah Terima:**
-  - Tombol panggil pemilik via WhatsApp otomatis dengan pesan pengingat lokasi & berkas yang harus dibawa.
-  - Modal konfirmasi serah terima barang fisik kepada pemilik yang sah.
+### Untuk pengguna
 
-### 3. Tampilan & UI Modern
-- Desain *Apple-inspired* bersih menggunakan palet *Campus Navy* (`#123356`).
-- Dropdown form kustom (`select.form-input`) dengan ikon chevron SVG responsif.
-- Identitas visual resmi kampus (`logo.svg`) pada Navbar, Footer, favicon, dan metadata aplikasi.
+- Mencari barang temuan berdasarkan kata kunci, kategori, lokasi, dan tanggal, dengan urutan terbaru atau terlama.
+- Melaporkan barang hilang atau temuan beserta keterangan dan foto opsional.
+- Mengajukan klaim dengan ciri khusus barang serta melihat laporan, klaim, perkembangan, dan riwayatnya.
+- Menjadwalkan pengambilan untuk klaim yang disetujui dan melihat tiket pengambilan.
+- Mengubah profil dan nomor telepon; informasi akademik bersifat opsional.
 
----
+### Untuk petugas
 
-## 🛠️ Tech Stack
+- Meninjau laporan kehilangan dan memeriksa ciri kepemilikan pada klaim.
+- Menyetujui, menolak, atau meninjau kembali klaim, serta menentukan lokasi pengambilan.
+- Mencatat penemu dan lokasi penyimpanan barang, serta menyelesaikan proses penyerahan pada laporan kehilangan.
 
-- **Framework:** [Next.js](https://nextjs.org/) (App Router)
-- **Bahasa:** TypeScript
-- **Styling:** Tailwind CSS & Vanilla CSS Design System
-- **State & Data Fetching:** React Query (`@tanstack/react-query`)
-- **UI Components:** Radix UI Dialog primitives & Lucide Icons
-- **Backend & Auth:** [Supabase](https://supabase.com/) (PostgreSQL, Storage, Auth via `@supabase/ssr`)
-- **Knowledge Graph:** Graphify AST & semantic code mapping
+## Cara kerja
 
----
+1. Pengguna masuk dan membuat laporan barang hilang atau temuan.
+2. Barang yang dilaporkan ditemukan masuk ke katalog agar dapat dicari oleh pemiliknya.
+3. Pemilik mengajukan klaim dengan menjelaskan ciri khusus barang dan memberikan nomor yang dapat dihubungi.
+4. Petugas memeriksa informasi kepemilikan, memutuskan klaim, dan menentukan lokasi pengambilan jika disetujui.
+5. Pemilik dengan klaim yang disetujui memilih jadwal, lalu menunjukkan tiket saat mengambil barang di lokasi yang ditentukan.
 
-## 🚀 Menjalankan Aplikasi
+## Teknologi
 
-### 1. Instalasi Dependensi
+Next.js, React, TypeScript, Tailwind CSS, TanStack Query, Radix UI, dan Supabase (PostgreSQL, Auth, Storage).
+
+## Menjalankan di komputer sendiri
+
+Siapkan Node.js, npm, dan proyek Supabase.
+
+### 1. Clone dan instal dependensi
+
 ```bash
+git clone https://github.com/Velubby/campus-lost-found.git
+cd campus-lost-found
 npm install
 ```
 
-### 2. Konfigurasi Lingkungan (`.env.local`)
-Salin berkas template lingkungan:
-```bash
-cp .env.example .env.local
-```
-Lalu lengkapi variabel berikut dari dashboard Supabase (**Project Settings > API**):
+### 2. Buat `.env.local`
+
+Isi dengan URL proyek dan publishable key dari dashboard Supabase, bukan service-role key:
+
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-anon-key
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
 ```
 
-> **Catatan:** Tanpa konfigurasi Supabase, aplikasi tetap dapat dijalankan dalam mode preview lokal menggunakan mock data.
+### 3. Siapkan Supabase
 
-### 3. Menjalankan Server Pengembangan
+Pada proyek Supabase baru, jalankan [supabase/schema.sql](supabase/schema.sql) melalui SQL Editor. Skrip ini membuat tabel, aturan akses, trigger profil dan laporan, serta bucket foto publik `item-images`.
+
+[supabase/catalog-policy.sql](supabase/catalog-policy.sql) adalah patch kebijakan katalog untuk instalasi lama. Jalankan setelah schema tersedia jika instalasi lama belum mengizinkan pembacaan katalog publik; patch ini tidak diperlukan setelah memasang `schema.sql` terbaru.
+
+Gunakan provider Email untuk pendaftaran dan login email/password. Pengaturan **Confirm email** menentukan apakah pengguna harus mengonfirmasi email sebelum masuk. Login Google juga tersedia di kode, tetapi memerlukan konfigurasi provider Google dan izin URL pengalihan `http://localhost:3000/auth/callback` di Supabase.
+
+**TODO:** Pastikan pengaturan konfirmasi email dan aktivasi provider Google pada proyek Supabase yang digunakan; status pengaturan dashboard tidak dapat dipastikan dari repository.
+
+Untuk memberi akses petugas, daftarkan akun lalu ubah kolom `role` pada baris akun tersebut di tabel `profiles` menjadi `satpam` melalui Table Editor Supabase. Akun baru memiliki peran bawaan `user`.
+
+### 4. Jalankan aplikasi
+
 ```bash
 npm run dev
 ```
-Buka [http://localhost:3000](http://localhost:3000) pada peramban web Anda.
 
----
+Buka [http://localhost:3000](http://localhost:3000).
 
-## 🗄️ Konfigurasi Database Supabase
+## Pengecekan kode
 
-1. Buka **SQL Editor** pada dashboard Supabase.
-2. Jalankan skrip [supabase/schema.sql](file:///c:/ivan-dev/campus-lost-found/supabase/schema.sql) untuk membuat tabel:
-   - `profiles` (Data profil civitas)
-   - `reports` (Laporan barang hilang / temuan)
-   - `report_events` (Riwayat timeline aktivitas)
-   - `items` (Katalog barang temuan terdaftar)
-   - `claims` (Klaim kepemilikan barang)
-3. Jalankan skrip [supabase/catalog-policy.sql](file:///c:/ivan-dev/campus-lost-found/supabase/catalog-policy.sql) agar katalog barang temuan dapat diakses publik tanpa login.
-4. Buat Storage Bucket publik bernama `item-images` untuk menampung unggahan foto barang (maksimal 5MB, format PNG/JPG/WEBP).
-5. Pada menu **Authentication > Providers > Email**, Anda dapat menonaktifkan *Confirm Email* untuk kemudahan pengujian akun lokal.
-
----
-
-## 🧪 Validasi & Pengujian
-
-Jalankan perintah berikut untuk memeriksa build dan linting:
 ```bash
-npm run build
 npm run lint
-```
-
-Untuk memperbarui knowledge graph kode proyek:
-```bash
-python -m graphify update .
+npm run build
 ```

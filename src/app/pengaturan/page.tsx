@@ -46,6 +46,12 @@ export default function SettingsPage() {
     event.preventDefault();
     setMessage('');
     setError('');
+    const fullName = name.trim();
+    if (!fullName) {
+      setError('Nama lengkap wajib diisi.');
+      toast.error('Nama lengkap wajib diisi.');
+      return;
+    }
     const user = await getCurrentUser();
 
     if (!user) {
@@ -54,9 +60,15 @@ export default function SettingsPage() {
     }
 
     const supabase = createClient();
+    const profileData = {
+      full_name: fullName,
+      student_number: studentNumber.trim() || null,
+      faculty: faculty.trim() || null,
+      study_program: studyProgram.trim() || null,
+    };
     const [{ error: profileError }, { error: authError }] = await Promise.all([
-      supabase.from('profiles').upsert({ id: user.id, full_name: name, phone, student_number: studentNumber, faculty, study_program: studyProgram }, { onConflict: 'id' }),
-      supabase.auth.updateUser({ data: { full_name: name, student_number: studentNumber, faculty, study_program: studyProgram } }),
+      supabase.from('profiles').upsert({ id: user.id, ...profileData, phone: phone.trim() || null }, { onConflict: 'id' }),
+      supabase.auth.updateUser({ data: profileData }),
     ]);
 
     if (profileError || authError) {
@@ -84,8 +96,9 @@ export default function SettingsPage() {
           <label className="block space-y-1.5"><span className="text-xs font-bold text-slate-700">Nama lengkap</span><input required value={name} onChange={(event) => setName(event.target.value)} className="form-input w-full" /></label>
           <label className="block space-y-1.5"><span className="text-xs font-bold text-slate-700">Email</span><input value={email} disabled className="form-input w-full bg-slate-50 text-slate-500" /></label>
           <label className="block space-y-1.5"><span className="text-xs font-bold text-slate-700">Nomor telepon</span><input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} className="form-input w-full" placeholder="Nomor yang bisa dihubungi petugas" /></label>
-          <label className="block space-y-1.5"><span className="text-xs font-bold text-slate-700">NIM</span><input required value={studentNumber} onChange={(event) => setStudentNumber(event.target.value)} className="form-input w-full" /></label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><label className="block space-y-1.5"><span className="text-xs font-bold text-slate-700">Fakultas</span><input required value={faculty} onChange={(event) => setFaculty(event.target.value)} className="form-input w-full" /></label><label className="block space-y-1.5"><span className="text-xs font-bold text-slate-700">Program studi</span><input required value={studyProgram} onChange={(event) => setStudyProgram(event.target.value)} className="form-input w-full" /></label></div>
+          <p className="text-xs text-slate-600">Data akademik bersifat opsional. Kamu bisa menambahkan atau menghapusnya kapan saja.</p>
+          <label className="block space-y-1.5"><span className="text-xs font-bold text-slate-700">NIM (opsional)</span><input value={studentNumber} onChange={(event) => setStudentNumber(event.target.value)} className="form-input w-full" /></label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><label className="block space-y-1.5"><span className="text-xs font-bold text-slate-700">Fakultas (opsional)</span><input value={faculty} onChange={(event) => setFaculty(event.target.value)} className="form-input w-full" /></label><label className="block space-y-1.5"><span className="text-xs font-bold text-slate-700">Program studi (opsional)</span><input value={studyProgram} onChange={(event) => setStudyProgram(event.target.value)} className="form-input w-full" /></label></div>
           <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> Simpan Pengaturan</button>
         </form>
       </div>

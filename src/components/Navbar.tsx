@@ -175,7 +175,12 @@ export default function Navbar() {
                   <Link href="/pengaturan" role="menuitem" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"><Settings className="w-4 h-4" /> Pengaturan akun</Link>
                   <button type="button" role="menuitem" onClick={handleLogout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-rose-700 hover:bg-rose-50"><LogOut className="w-4 h-4" /> Keluar</button>
                 </>
-              ) : <Link href="/masuk" role="menuitem" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-xs text-slate-700 hover:bg-slate-50">Masuk ke akun</Link>}
+              ) : (
+                <>
+                  <Link href="/masuk" role="menuitem" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-xs text-slate-700 hover:bg-slate-50">Masuk ke akun</Link>
+                  <Link href="/daftar" role="menuitem" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-xs text-slate-700 hover:bg-slate-50">Buat akun baru</Link>
+                </>
+              )}
             </div>
           )}
           </div>

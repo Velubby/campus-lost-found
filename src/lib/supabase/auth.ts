@@ -52,6 +52,17 @@ export async function signInUser(email: string, password: string) {
   return await supabase.auth.signInWithPassword({ email, password });
 }
 
+export async function signInWithGoogle() {
+  const supabase = createClient();
+  return await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: new URL('/auth/callback', window.location.origin).toString(),
+      queryParams: { prompt: 'select_account' },
+    },
+  });
+}
+
 export async function signUpUser(data: {
   email: string;
   password: string;

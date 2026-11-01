@@ -1,28 +1,43 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { signInUser } from '@/lib/supabase/auth';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 import { toast } from 'sonner';
+import { z } from 'zod';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => searchParams.get('error') === 'google_auth'
+    ? 'Login Google belum berhasil atau dibatalkan. Silakan coba lagi.'
+    : '');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const normalizedEmail = email.trim().toLowerCase();
+    let validationError = '';
+    if (!normalizedEmail) validationError = 'Email wajib diisi.';
+    else if (!z.email().safeParse(normalizedEmail).success) validationError = 'Masukkan alamat email yang valid.';
+    else if (!password) validationError = 'Password wajib diisi.';
+    if (validationError) {
+      setError(validationError);
+      toast.error(validationError);
+      return;
+    }
     setIsLoading(true);
     setError('');
 
-    const { error: signInError } = await signInUser(email, password);
+    const { error: signInError } = await signInUser(normalizedEmail, password);
     if (signInError) {
       setError('Email atau password belum sesuai.');
       toast.error('Email atau password belum sesuai.');
@@ -61,7 +76,7 @@ export default function LoginPage() {
               Kembali terhubung dengan barangmu.
             </h3>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Masuk dengan akun institusi kampus untuk melacak laporan dan klaim secara aman.
+              Gunakan email akunmu untuk melacak laporan dan klaim.
             </p>
           </div>
         </div>
@@ -88,7 +103,7 @@ export default function LoginPage() {
             {/* Email field */}
             <div className="space-y-1.5">
               <label htmlFor="email" className="text-xs font-bold text-slate-700 block">
-                Email Institusi
+                Email
               </label>
               <div className="flex items-center gap-2 form-input w-full group focus-within:[box-shadow:0_0_0_3px_rgba(0,113,227,0.2)] focus-within:border-sky-500 transition-all">
                 <Mail className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
@@ -97,7 +112,9 @@ export default function LoginPage() {
                   type="email"
                   required
                   autoComplete="email"
-                  placeholder="nama@kampus.ac.id"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  placeholder="nama@contoh.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="flex-1 bg-transparent outline-none text-[0.9375rem] text-slate-800 placeholder:text-slate-400 min-w-0"
@@ -158,10 +175,12 @@ export default function LoginPage() {
               disabled={isLoading}
               className="w-full btn-primary py-3 justify-center shadow-md disabled:opacity-50"
             >
-              <span>{isLoading ? 'Memeriksa kredensial...' : 'Masuk ke Akun Kampus'}</span>
+              <span>{isLoading ? 'Memeriksa kredensial...' : 'Masuk ke akun'}</span>
               <ArrowRight className="w-4 h-4" aria-hidden="true" />
             </button>
           </form>
+
+          <GoogleSignInButton disabled={isLoading} />
 
           <p className="text-xs text-center text-slate-500">
             Belum punya akun?{' '}
@@ -173,5 +192,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="px-4 py-12 text-center text-sm text-slate-600">Memuat halaman masuk...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
