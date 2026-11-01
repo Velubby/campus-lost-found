@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { Toaster } from 'sonner';
+import MicrosoftClarity from '@/components/MicrosoftClarity';
 
 export const metadata: Metadata = {
   title: 'Campus Lost & Found | Layanan Resmi Kampus',
@@ -24,6 +25,7 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className="min-h-screen flex flex-col bg-[#f5f5f7] text-[#1d1d1f] antialiased selection:bg-sky-500 selection:text-white">
+        <MicrosoftClarity />
         <QueryProvider>
           <Suspense fallback={<div className="h-16 bg-white/80" />}>
             <Navbar />
