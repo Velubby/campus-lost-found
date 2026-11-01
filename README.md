@@ -63,7 +63,7 @@ Pada proyek Supabase baru, jalankan [supabase/schema.sql](supabase/schema.sql) m
 
 Gunakan provider Email untuk pendaftaran dan login email/password. Pengaturan **Confirm email** menentukan apakah pengguna harus mengonfirmasi email sebelum masuk. Login Google juga tersedia di kode, tetapi memerlukan konfigurasi provider Google dan izin URL pengalihan `http://localhost:3000/auth/callback` di Supabase.
 
-**TODO:** Pastikan pengaturan konfirmasi email dan aktivasi provider Google pada proyek Supabase yang digunakan; status pengaturan dashboard tidak dapat dipastikan dari repository.
+Pada proyek Supabase yang digunakan saat ini, **Confirm email** dinonaktifkan dan provider Google sudah diaktifkan. Jika membuat proyek Supabase sendiri, konfigurasi autentikasi perlu diatur kembali melalui dashboard; pengaturan ini tidak diterapkan oleh `schema.sql`.
 
 Untuk memberi akses petugas, daftarkan akun lalu ubah kolom `role` pada baris akun tersebut di tabel `profiles` menjadi `satpam` melalui Table Editor Supabase. Akun baru memiliki peran bawaan `user`.
 
