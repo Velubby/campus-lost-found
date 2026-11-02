@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Lock, Mail, UserRound } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Lock, Mail, UserRound } from 'lucide-react';
 import { signUpUser } from '@/lib/supabase/auth';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 import { toast } from 'sonner';
@@ -37,6 +37,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [studentNumber, setStudentNumber] = useState('');
   const [faculty, setFaculty] = useState('');
   const [studyProgram, setStudyProgram] = useState('');
@@ -102,6 +104,8 @@ export default function RegisterPage() {
 
       setPassword('');
       setConfirmPassword('');
+      setShowPassword(false);
+      setShowConfirmPassword(false);
       if (data.session) {
         toast.success('Pendaftaran berhasil. Kamu sudah masuk ke akun.');
         router.push('/dashboard');
@@ -161,21 +165,39 @@ export default function RegisterPage() {
             </div>
           </label>
 
-          <label className="space-y-1.5 block">
-            <span className="text-xs font-bold text-slate-700">Password</span>
+          <div className="space-y-1.5">
+            <label htmlFor="registration-password" className="text-xs font-bold text-slate-700 block">Password</label>
             <div className="flex items-center gap-2 form-input w-full focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/20">
               <Lock className="w-4 h-4 text-slate-400" aria-hidden="true" />
-              <input required type="password" minLength={8} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="flex-1 bg-transparent outline-none text-sm min-w-0" placeholder="Minimal 8 karakter" />
+              <input id="registration-password" required type={showPassword ? 'text' : 'password'} minLength={8} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="flex-1 bg-transparent outline-none text-sm min-w-0" placeholder="Minimal 8 karakter" />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                aria-controls="registration-password"
+                className="-my-2 -mr-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
+              </button>
             </div>
-          </label>
+          </div>
 
-          <label className="space-y-1.5 block">
-            <span className="text-xs font-bold text-slate-700">Konfirmasi password</span>
+          <div className="space-y-1.5">
+            <label htmlFor="registration-confirm-password" className="text-xs font-bold text-slate-700 block">Konfirmasi password</label>
             <div className="flex items-center gap-2 form-input w-full focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/20">
               <Lock className="w-4 h-4 text-slate-400" aria-hidden="true" />
-              <input required type="password" minLength={8} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="flex-1 bg-transparent outline-none text-sm min-w-0" placeholder="Ulangi password" />
+              <input id="registration-confirm-password" required type={showConfirmPassword ? 'text' : 'password'} minLength={8} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="flex-1 bg-transparent outline-none text-sm min-w-0" placeholder="Ulangi password" />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((visible) => !visible)}
+                aria-label={showConfirmPassword ? 'Sembunyikan konfirmasi password' : 'Tampilkan konfirmasi password'}
+                aria-controls="registration-confirm-password"
+                className="-my-2 -mr-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700"
+              >
+                {showConfirmPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
+              </button>
             </div>
-          </label>
+          </div>
 
           <details>
             <summary className="min-h-11 cursor-pointer py-3 text-xs font-medium text-slate-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700">Data akademik (opsional)</summary>
