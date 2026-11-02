@@ -39,6 +39,29 @@ async function blurImageFile(file: File) {
   }
 }
 
+function getJakartaDateTime(timestamp = Date.now()) {
+  const value = new Date(timestamp + 7 * 60 * 60 * 1000).toISOString();
+  return { tanggal: value.slice(0, 10), waktu: value.slice(11, 16) };
+}
+
+function getIncidentDateTimeError(date: string, time: string, now = Date.now()) {
+  if (!date || !time) return 'Harap isi tanggal dan waktu kejadian terlebih dahulu.';
+
+  const timestamp = new Date(`${date}T${time}:00+07:00`).getTime();
+  const jakartaOffset = 7 * 60 * 60 * 1000;
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    !/^\d{2}:\d{2}$/.test(time) ||
+    !Number.isFinite(timestamp) ||
+    new Date(timestamp + jakartaOffset).toISOString().slice(0, 16) !== `${date}T${time}`
+  ) {
+    return 'Tanggal atau waktu kejadian tidak valid.';
+  }
+
+  if (timestamp > now) return 'Tanggal dan waktu kejadian tidak boleh melebihi waktu pelaporan (WIB).';
+  return '';
+}
+
 function ReportForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -64,24 +87,31 @@ function ReportForm() {
   const [submittedReportId, setSubmittedReportId] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [dateTimeError, setDateTimeError] = useState('');
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+  const { tanggal: today, waktu: currentJakartaTime } = getJakartaDateTime(currentTime);
   const predefinedCategories = ['Elektronik', 'Dokumen', 'Aksesoris', 'Tas & Pakaian', 'Lainnya'];
 
   const toJakartaIso = (date: string, time: string) =>
     new Date(`${date}T${time}:00+07:00`).toISOString();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => ({
     namaBarang: '',
     kategori: 'Elektronik',
     lokasi: '',
-    tanggal: '2026-10-23',
-    waktu: '10:00',
+    ...getJakartaDateTime(),
     deskripsiPublik: '',
     ciriRahasia: '',
     namaPelapor: '',
     email: '',
     telepon: '',
     setuju: true
-  });
+  }));
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -106,8 +136,21 @@ function ReportForm() {
     return <div className="max-w-3xl mx-auto px-4 py-16 text-center text-slate-500">Memeriksa sesi akun...</div>;
   }
 
+  const validateIncidentDateTime = () => {
+    const error = getIncidentDateTimeError(formData.tanggal, formData.waktu);
+    setDateTimeError(error);
+    if (error) {
+      setCurrentStep(1);
+      toast.error(error);
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validateIncidentDateTime()) return;
 
     if (!formData.setuju) {
       toast.error('Harap setujui pernyataan sebelum mengirim laporan.');
@@ -169,6 +212,7 @@ function ReportForm() {
       ...prev,
       namaBarang: '',
       lokasi: '',
+      ...getJakartaDateTime(),
       deskripsiPublik: '',
       ciriRahasia: '',
     }));
@@ -178,7 +222,7 @@ function ReportForm() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      
+
       {/* Header */}
       <div className="text-center space-y-2">
         <span className="text-xs font-bold text-sky-700 uppercase tracking-widest block">
@@ -235,7 +279,7 @@ function ReportForm() {
               {submitError}
             </div>
           )}
-            
+
             {/* Step 1: Detail Barang */}
             {currentStep === 1 && (
               <div className="space-y-4">
@@ -298,26 +342,81 @@ function ReportForm() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">Tanggal Kejadian</label>
+                    <label htmlFor="incident-date" className="text-xs font-bold text-slate-700 block">Tanggal Kejadian</label>
                     <input
+                      id="incident-date"
                       type="date"
                       required
+                      max={today}
                       value={formData.tanggal}
-                      onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
+                      aria-invalid={Boolean(dateTimeError)}
+                      aria-describedby={dateTimeError ? 'incident-date-time-error' : undefined}
+                      onFocus={() => setCurrentTime(Date.now())}
+                      onChange={(e) => {
+                        setDateTimeError('');
+                        setFormData({ ...formData, tanggal: e.target.value });
+                      }}
                       className="form-input w-full"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">Perkiraan Waktu</label>
-                    <input
-                      type="time"
-                      value={formData.waktu}
-                      onChange={(e) => setFormData({ ...formData, waktu: e.target.value })}
-                      className="form-input w-full"
-                    />
-                  </div>
+                  <fieldset className="space-y-1 min-w-0">
+                    <legend className="text-xs font-bold text-slate-700">Jam Kejadian</legend>
+                    <div className="flex items-center gap-2">
+                      <select
+                        aria-label="Jam kejadian"
+                        required
+                        value={formData.waktu.split(':')[0]}
+                        aria-invalid={Boolean(dateTimeError)}
+                        aria-describedby={dateTimeError ? 'incident-date-time-error' : undefined}
+                        onFocus={() => setCurrentTime(Date.now())}
+                        onChange={(e) => {
+                          setDateTimeError('');
+                          setFormData({ ...formData, waktu: `${e.target.value}:${formData.waktu.split(':')[1]}` });
+                        }}
+                        className="form-input w-full min-w-0"
+                      >
+                        {Array.from({ length: 24 }, (_, hour) => {
+                          const value = String(hour).padStart(2, '0');
+                          return (
+                            <option key={value} value={value} disabled={formData.tanggal === today && value > currentJakartaTime.slice(0, 2)}>
+                              {value}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <span aria-hidden="true">:</span>
+                      <select
+                        aria-label="Menit kejadian"
+                        required
+                        value={formData.waktu.split(':')[1]}
+                        aria-invalid={Boolean(dateTimeError)}
+                        aria-describedby={dateTimeError ? 'incident-date-time-error' : undefined}
+                        onFocus={() => setCurrentTime(Date.now())}
+                        onChange={(e) => {
+                          setDateTimeError('');
+                          setFormData({ ...formData, waktu: `${formData.waktu.split(':')[0]}:${e.target.value}` });
+                        }}
+                        className="form-input w-full min-w-0"
+                      >
+                        {Array.from({ length: 60 }, (_, minute) => {
+                          const value = String(minute).padStart(2, '0');
+                          return (
+                            <option key={value} value={value} disabled={formData.tanggal === today && formData.waktu.slice(0, 2) === currentJakartaTime.slice(0, 2) && value > currentJakartaTime.slice(3, 5)}>
+                              {value}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  </fieldset>
                 </div>
+
+                {dateTimeError && (
+                  <p id="incident-date-time-error" role="alert" className="text-xs text-red-600">
+                    {dateTimeError}
+                  </p>
+                )}
 
                 <div className="pt-4 flex justify-end">
                   <button
@@ -327,6 +426,7 @@ function ReportForm() {
                         toast.error('Harap isi nama barang dan lokasi terlebih dahulu.');
                         return;
                       }
+                      if (!validateIncidentDateTime()) return;
                       setCurrentStep(2);
                     }}
                     className="btn-primary text-xs"
