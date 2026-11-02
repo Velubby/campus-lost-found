@@ -18,17 +18,34 @@ export default function Navbar() {
 
   useEffect(() => {
     const supabase = createClient();
-    const loadUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
-      const { data: accountProfile } = user ? await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle() : { data: null };
-      setProfile(name ? { name, initials: name.slice(0, 2).toUpperCase(), role: accountProfile?.role || 'user' } : null);
-      setAuthReady(true);
-    };
+    let active = true;
+    let authVersion = 0;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const version = ++authVersion;
+      const user = session?.user;
+      if (!user) {
+        setProfile(null);
+        setAuthReady(true);
+        return;
+      }
 
-    loadUser();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => loadUser());
-    return () => subscription.unsubscribe();
+      const name = user.user_metadata?.full_name || user.email?.split('@')[0] || '';
+      const updateProfile = (role: string) => {
+        if (!active || version !== authVersion) return;
+        setProfile(name ? { name, initials: name.slice(0, 2).toUpperCase(), role } : null);
+        setAuthReady(true);
+      };
+      supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+        .then(
+          ({ data: accountProfile }) => updateProfile(accountProfile?.role || 'user'),
+          () => updateProfile('user'),
+        );
+    });
+    return () => {
+      active = false;
+      authVersion++;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const isCurrent = (path: string) => {

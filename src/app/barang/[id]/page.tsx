@@ -28,6 +28,7 @@ function ItemDetailContent() {
 
   // Modal claim state
   const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(false);
   const [claimSubmitted, setClaimSubmitted] = useState(false);
   const [claimError, setClaimError] = useState('');
   const [claimAnswers, setClaimAnswers] = useState({
@@ -35,6 +36,25 @@ function ItemDetailContent() {
     isiBarang: '',
     kontak: ''
   });
+
+  const handleOpenClaim = async () => {
+    if (isCheckingAuth) return;
+    setIsCheckingAuth(true);
+
+    try {
+      const user = await getCurrentUser();
+      if (!user) {
+        router.push(`/masuk?${new URLSearchParams({ next: `/barang/${itemId}` })}`);
+        return;
+      }
+      setClaimError('');
+      setIsClaimModalOpen(true);
+    } catch {
+      toast.error('Akun belum dapat diperiksa. Periksa koneksi dan coba lagi.');
+    } finally {
+      setIsCheckingAuth(false);
+    }
+  };
 
   const handleClaimSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,11 +219,14 @@ function ItemDetailContent() {
             </div>
 
             <button
-              onClick={() => setIsClaimModalOpen(true)}
-              className="w-full btn-primary text-sm py-3 flex items-center justify-center gap-2 shadow-md"
+              type="button"
+              onClick={handleOpenClaim}
+              disabled={isCheckingAuth}
+              aria-busy={isCheckingAuth}
+              className="w-full btn-primary text-sm py-3 flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
             >
               <ShieldCheck className="w-4 h-4 text-sky-300" />
-              <span>Ajukan Klaim Kepemilikan</span>
+              <span>{isCheckingAuth ? 'Memeriksa akun...' : 'Ajukan Klaim Kepemilikan'}</span>
             </button>
           </div>
 
