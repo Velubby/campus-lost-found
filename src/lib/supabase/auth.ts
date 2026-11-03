@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { getAuthRedirectPath } from '@/lib/supabase/redirect';
 
 export interface UserProfile {
   id: string;
@@ -52,12 +53,14 @@ export async function signInUser(email: string, password: string) {
   return await supabase.auth.signInWithPassword({ email, password });
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(next?: string) {
   const supabase = createClient();
+  const callbackUrl = new URL('/auth/callback', window.location.origin);
+  if (next) callbackUrl.searchParams.set('next', getAuthRedirectPath(next));
   return await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: new URL('/auth/callback', window.location.origin).toString(),
+      redirectTo: callbackUrl.toString(),
       queryParams: { prompt: 'select_account' },
     },
   });

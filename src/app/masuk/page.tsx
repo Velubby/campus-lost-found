@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { signInUser } from '@/lib/supabase/auth';
+import { getAuthRedirectPath } from '@/lib/supabase/redirect';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -13,6 +14,8 @@ import { z } from 'zod';
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const nextPath = getAuthRedirectPath(searchParams.get('next'));
+  const registerUrl = searchParams.has('next') ? `/daftar?${new URLSearchParams({ next: nextPath })}` : '/daftar';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -24,6 +27,7 @@ function LoginContent() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     const normalizedEmail = email.trim().toLowerCase();
     let validationError = '';
     if (!normalizedEmail) validationError = 'Email wajib diisi.';
@@ -37,16 +41,24 @@ function LoginContent() {
     setIsLoading(true);
     setError('');
 
-    const { error: signInError } = await signInUser(normalizedEmail, password);
-    if (signInError) {
-      setError('Email atau password belum sesuai.');
-      toast.error('Email atau password belum sesuai.');
-      setIsLoading(false);
-      return;
-    }
+    try {
+      const { error: signInError } = await signInUser(normalizedEmail, password);
+      if (signInError) {
+        setError('Email atau password belum sesuai.');
+        toast.error('Email atau password belum sesuai.');
+        return;
+      }
 
-    toast.success('Berhasil masuk ke akun');
-    router.push('/dashboard');
+      toast.success('Berhasil masuk ke akun');
+      router.replace(nextPath);
+      router.refresh();
+    } catch {
+      const message = 'Login belum dapat diselesaikan. Periksa koneksi internet dan coba lagi.';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -180,11 +192,11 @@ function LoginContent() {
             </button>
           </form>
 
-          <GoogleSignInButton disabled={isLoading} />
+          <GoogleSignInButton disabled={isLoading} next={searchParams.has('next') ? nextPath : undefined} />
 
           <p className="text-xs text-center text-slate-500">
             Belum punya akun?{' '}
-            <Link href="/daftar" className="font-bold text-sky-700 hover:underline">
+            <Link href={registerUrl} className="font-bold text-sky-700 hover:underline">
               Buat akun baru
             </Link>
           </p>

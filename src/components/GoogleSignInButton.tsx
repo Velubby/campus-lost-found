@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import Image from 'next/image';
 import { signInWithGoogle } from '@/lib/supabase/auth';
 
-export default function GoogleSignInButton({ disabled = false }: { disabled?: boolean }) {
+export default function GoogleSignInButton({ disabled = false, next }: { disabled?: boolean; next?: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const isSubmitting = useRef(false);
@@ -16,7 +16,7 @@ export default function GoogleSignInButton({ disabled = false }: { disabled?: bo
     setError('');
 
     try {
-      const { data, error: signInError } = await signInWithGoogle();
+      const { data, error: signInError } = await signInWithGoogle(next);
       if (signInError || !data.url) {
         throw new Error('Google OAuth could not be started');
       }

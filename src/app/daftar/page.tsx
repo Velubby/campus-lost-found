@@ -1,10 +1,11 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { Suspense, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ArrowRight, Lock, Mail, UserRound } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowRight, Eye, EyeOff, Lock, Mail, UserRound } from 'lucide-react';
 import { signUpUser } from '@/lib/supabase/auth';
+import { getAuthRedirectPath } from '@/lib/supabase/redirect';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -31,12 +32,17 @@ function getRegistrationError(error: { code?: string; status?: number; name?: st
   return 'Pendaftaran belum berhasil. Coba lagi nanti atau hubungi petugas melalui halaman bantuan.';
 }
 
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = getAuthRedirectPath(searchParams.get('next'));
+  const loginUrl = searchParams.has('next') ? `/masuk?${new URLSearchParams({ next: nextPath })}` : '/masuk';
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [studentNumber, setStudentNumber] = useState('');
   const [faculty, setFaculty] = useState('');
   const [studyProgram, setStudyProgram] = useState('');
@@ -102,9 +108,12 @@ export default function RegisterPage() {
 
       setPassword('');
       setConfirmPassword('');
+      setShowPassword(false);
+      setShowConfirmPassword(false);
       if (data.session) {
         toast.success('Pendaftaran berhasil. Kamu sudah masuk ke akun.');
-        router.push('/dashboard');
+        router.replace(nextPath);
+        router.refresh();
         return;
       }
 
@@ -133,7 +142,7 @@ export default function RegisterPage() {
           <div role="status" className="space-y-4 rounded-xl border border-sky-200 bg-sky-50 p-5 text-sm text-sky-900">
             <h2 className="font-bold">Cek email kamu</h2>
             <p className="break-words">Jika pendaftaran dapat diproses, tautan konfirmasi akan dikirim ke {confirmationEmail}. Periksa kotak masuk dan folder spam, lalu konfirmasi email sebelum masuk.</p>
-            <Link href="/masuk" className="btn-primary min-h-11 justify-center">Lanjut ke halaman masuk</Link>
+            <Link href={loginUrl} className="btn-primary min-h-11 justify-center">Lanjut ke halaman masuk</Link>
           </div>
         ) : (
         <form onSubmit={handleRegister} className="space-y-4" noValidate aria-busy={isLoading} aria-describedby={error ? 'registration-error' : undefined}>
@@ -161,21 +170,39 @@ export default function RegisterPage() {
             </div>
           </label>
 
-          <label className="space-y-1.5 block">
-            <span className="text-xs font-bold text-slate-700">Password</span>
+          <div className="space-y-1.5">
+            <label htmlFor="registration-password" className="text-xs font-bold text-slate-700 block">Password</label>
             <div className="flex items-center gap-2 form-input w-full focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/20">
               <Lock className="w-4 h-4 text-slate-400" aria-hidden="true" />
-              <input required type="password" minLength={8} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="flex-1 bg-transparent outline-none text-sm min-w-0" placeholder="Minimal 8 karakter" />
+              <input id="registration-password" required type={showPassword ? 'text' : 'password'} minLength={8} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="flex-1 bg-transparent outline-none text-sm min-w-0" placeholder="Minimal 8 karakter" />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                aria-controls="registration-password"
+                className="-my-2 -mr-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
+              </button>
             </div>
-          </label>
+          </div>
 
-          <label className="space-y-1.5 block">
-            <span className="text-xs font-bold text-slate-700">Konfirmasi password</span>
+          <div className="space-y-1.5">
+            <label htmlFor="registration-confirm-password" className="text-xs font-bold text-slate-700 block">Konfirmasi password</label>
             <div className="flex items-center gap-2 form-input w-full focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/20">
               <Lock className="w-4 h-4 text-slate-400" aria-hidden="true" />
-              <input required type="password" minLength={8} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="flex-1 bg-transparent outline-none text-sm min-w-0" placeholder="Ulangi password" />
+              <input id="registration-confirm-password" required type={showConfirmPassword ? 'text' : 'password'} minLength={8} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="flex-1 bg-transparent outline-none text-sm min-w-0" placeholder="Ulangi password" />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((visible) => !visible)}
+                aria-label={showConfirmPassword ? 'Sembunyikan konfirmasi password' : 'Tampilkan konfirmasi password'}
+                aria-controls="registration-confirm-password"
+                className="-my-2 -mr-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700"
+              >
+                {showConfirmPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
+              </button>
             </div>
-          </label>
+          </div>
 
           <details>
             <summary className="min-h-11 cursor-pointer py-3 text-xs font-medium text-slate-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700">Data akademik (opsional)</summary>
@@ -196,13 +223,21 @@ export default function RegisterPage() {
         </form>
         )}
 
-        {!confirmationEmail && <div className="mt-5"><GoogleSignInButton disabled={isLoading} /></div>}
+        {!confirmationEmail && <div className="mt-5"><GoogleSignInButton disabled={isLoading} next={searchParams.has('next') ? nextPath : undefined} /></div>}
 
         <p className="text-xs text-center text-slate-500 mt-6">
           Sudah punya akun?{' '}
-          <Link href="/masuk" className="font-bold text-sky-700 hover:underline">Masuk di sini</Link>
+          <Link href={loginUrl} className="font-bold text-sky-700 hover:underline">Masuk di sini</Link>
         </p>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="px-4 py-12 text-center text-sm text-slate-600">Memuat halaman daftar...</div>}>
+      <RegisterContent />
+    </Suspense>
   );
 }
