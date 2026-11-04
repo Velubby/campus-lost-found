@@ -13,31 +13,7 @@ import {
 } from '@radix-ui/react-dialog';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-
-async function blurImageFile(file: File) {
-  const objectUrl = URL.createObjectURL(file);
-
-  try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const element = new Image();
-      element.onload = () => resolve(element);
-      element.onerror = reject;
-      element.src = objectUrl;
-    });
-    const padding = 24;
-    const canvas = document.createElement('canvas');
-    canvas.width = image.naturalWidth + padding * 2;
-    canvas.height = image.naturalHeight + padding * 2;
-    const context = canvas.getContext('2d');
-    if (!context) return file;
-    context.filter = 'blur(18px)';
-    context.drawImage(image, padding, padding, image.naturalWidth, image.naturalHeight);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, file.type || 'image/jpeg', 0.86));
-    return blob ? new File([blob], file.name, { type: file.type || 'image/jpeg' }) : file;
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
+import { optimizeImageFile } from '@/lib/image';
 
 function getJakartaDateTime(timestamp = Date.now()) {
   const value = new Date(timestamp + 7 * 60 * 60 * 1000).toISOString();
@@ -170,8 +146,8 @@ function ReportForm() {
 
       let imageUrl: string | null = null;
       if (imageFile) {
-        const uploadFile = reportType === 'temuan' ? await blurImageFile(imageFile) : imageFile;
-        const extension = uploadFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const uploadFile = await optimizeImageFile(imageFile, { blur: reportType === 'temuan' });
+        const extension = uploadFile.type === 'image/webp' ? 'webp' : uploadFile.name.split('.').pop()?.toLowerCase() || 'jpg';
         const imagePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
         const { error: uploadError } = await supabase.storage.from('item-images').upload(imagePath, uploadFile, { contentType: uploadFile.type, upsert: false });
         if (uploadError) {

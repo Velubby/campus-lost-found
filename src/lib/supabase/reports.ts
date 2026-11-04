@@ -33,11 +33,13 @@ export type ClaimRow = {
   pickup_location: string | null;
   pickup_at: string | null;
   created_at: string;
+  updated_at: string;
   item?: {
     id?: string;
     title: string;
     location: string;
     image_url: string | null;
+    status?: string | null;
   } | null;
 };
 
@@ -45,6 +47,7 @@ export type ClaimItemRow = {
   id: string;
   title: string;
   location: string;
+  status: string;
 };
 
 export async function fetchUserReports() {
@@ -61,7 +64,7 @@ export async function fetchUserReports() {
       .order('created_at', { ascending: false }),
     supabase
       .from('claims')
-      .select('id, report_id, item_id, status, ticket_code, pickup_location, pickup_at, created_at, item:items!item_id(id, title, location, image_url)')
+      .select('id, report_id, item_id, status, ticket_code, pickup_location, pickup_at, created_at, updated_at, item:items!item_id(id, title, location, image_url, status)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false }),
   ]);
@@ -78,7 +81,8 @@ export async function fetchUserReports() {
     pickup_location: string | null;
     pickup_at: string | null;
     created_at: string;
-    item: { id?: string; title: string; location: string; image_url: string | null } | Array<{ id?: string; title: string; location: string; image_url: string | null }> | null;
+    updated_at: string;
+    item: { id?: string; title: string; location: string; image_url: string | null; status: string } | Array<{ id?: string; title: string; location: string; image_url: string | null; status: string }> | null;
   }>).map((c) => ({
     id: c.id,
     report_id: c.report_id,
@@ -88,47 +92,50 @@ export async function fetchUserReports() {
     pickup_location: c.pickup_location,
     pickup_at: c.pickup_at,
     created_at: c.created_at,
+    updated_at: c.updated_at,
     item: Array.isArray(c.item) ? c.item[0] || null : c.item,
   }));
 
   return { user, reports: (reports || []) as UserReportRow[], claims: mappedClaims };
 }
 
-function selectLatestUserReport(reports: UserReportRow[], claims: ClaimRow[], reportId?: string) {
+function selectLatestUserReport(reports: UserReportRow[], claims: ClaimRow[], reportId?: string, ticketCode?: string) {
+  if (ticketCode) {
+    const ticketClaim = claims.find((item) => item.ticket_code.toLowerCase() === ticketCode.toLowerCase()) || null;
+    if (ticketClaim) return { report: null, claim: ticketClaim };
+  }
+
   const directClaim = !reportId ? claims.find((item) => !item.report_id) : null;
-  if (directClaim) return { directClaim, report: null, claim: directClaim };
+  if (directClaim) return { report: null, claim: directClaim };
 
   const report = (reportId ? reports.find((item) => item.id === reportId) : reports[0]) || null;
   const claim = report
     ? claims.filter((item) => item.report_id === report.id)[0] || null
     : claims[0] || null;
 
-  return { directClaim: null, report, claim };
+  return { report, claim };
 }
 
-export async function fetchLatestUserReport(reportId?: string) {
+export async function fetchLatestUserReport(reportId?: string, ticketCode?: string) {
   const { user, reports, claims } = await fetchUserReports();
-  const { directClaim, report, claim } = selectLatestUserReport(reports, claims, reportId);
-  if (directClaim) {
-    const { data: claimItem } = await createClient().from('items').select('id, title, location').eq('id', directClaim.item_id).maybeSingle();
-    return { user, reports, report: null, events: [] as ReportEventRow[], claim: directClaim, claimItem: (claimItem || null) as ClaimItemRow | null };
-  }
+  const { report, claim } = selectLatestUserReport(reports, claims, reportId, ticketCode);
+
   if (!report) {
-    if (!claim) return { user, reports, report: null, events: [] as ReportEventRow[], claim: null, claimItem: null };
-    const { data: claimItem } = await createClient().from('items').select('id, title, location').eq('id', claim.item_id).maybeSingle();
-    return { user, reports, report: null, events: [] as ReportEventRow[], claim, claimItem: (claimItem || null) as ClaimItemRow | null };
+    if (!claim) return { user, reports, claims, report: null, events: [] as ReportEventRow[], claim: null, claimItem: null };
+    const { data: claimItem } = await createClient().from('items').select('id, title, location, status').eq('id', claim.item_id).maybeSingle();
+    return { user, reports, claims, report: null, events: [] as ReportEventRow[], claim, claimItem: (claimItem || null) as ClaimItemRow | null };
   }
 
   const supabase = createClient();
-  const [{ data: events, error: eventsError }, { data: reportClaims, error: claimsError }] = await Promise.all([
-    supabase.from('report_events').select('id, title, description, created_at').eq('report_id', report.id).order('created_at', { ascending: true }),
-    Promise.resolve({ data: claim ? [claim] : [], error: null }),
-  ]);
+  const { data: events, error: eventsError } = await supabase
+    .from('report_events')
+    .select('id, title, description, created_at')
+    .eq('report_id', report.id)
+    .order('created_at', { ascending: true });
 
   if (eventsError) throw eventsError;
-  if (claimsError) throw claimsError;
 
-  return { user, reports, report, events: (events || []) as ReportEventRow[], claim: reportClaims?.[0] || null, claimItem: null };
+  return { user, reports, claims, report, events: (events || []) as ReportEventRow[], claim: claim || null, claimItem: null };
 }
 
 export function formatDate(value: string) {

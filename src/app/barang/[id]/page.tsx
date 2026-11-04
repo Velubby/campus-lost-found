@@ -76,25 +76,24 @@ function ItemDetailContent() {
     }
 
     try {
-      await submitItemClaim({
+      const savedClaim = await submitItemClaim({
         itemId: item.id,
         userId: user.id,
         privateAnswers: `${claimAnswers.ciriKhusus}\n${claimAnswers.isiBarang}`,
         contactPhone,
       });
+      setClaimError('');
+      setClaimSubmitted(true);
+      toast.success('Pengajuan klaim berhasil dikirim!');
+      setTimeout(() => {
+        setIsClaimModalOpen(false);
+        router.push(`/lacak?ticket=${savedClaim.ticket_code}`);
+      }, 2000);
+      return;
     } catch {
       setClaimError('Klaim belum dapat disimpan. Coba lagi nanti.');
       toast.error('Klaim belum dapat disimpan. Coba lagi nanti.');
-      return;
     }
-
-    setClaimError('');
-    setClaimSubmitted(true);
-    toast.success('Pengajuan klaim berhasil dikirim!');
-    setTimeout(() => {
-      setIsClaimModalOpen(false);
-      router.push('/lacak');
-    }, 2000);
   };
 
   return (
