@@ -308,15 +308,25 @@ export default function MyReportsPage() {
                   <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                     {/* Image & Main Info */}
                     <div className="flex items-start gap-4 flex-1">
-                      {report.image_url ? (
-                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                          <Image
-                            src={report.image_url}
-                            alt={report.item_title}
-                            fill
-                            sizes="96px"
-                            className="object-cover"
-                          />
+                      {report.image_url || (report.image_urls?.length ?? 0) > 0 ? (
+                        <div className="relative flex flex-col gap-2 shrink-0">
+                          <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
+                            <Image
+                              src={report.image_url || report.image_urls?.[0] || ''}
+                              alt={report.item_title}
+                              fill
+                              sizes="96px"
+                              className="object-cover"
+                            />
+                          </div>
+                          {report.image_urls?.slice(1).map((url, i) => (
+                            <img
+                              key={i}
+                              src={url}
+                              alt="Foto tambahan"
+                              className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl object-cover border border-slate-200 bg-slate-100 shrink-0"
+                            />
+                          ))}
                         </div>
                       ) : (
                         <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 shrink-0 border border-slate-200">

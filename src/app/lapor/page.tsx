@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ShieldAlert, Upload, CheckCircle2, ArrowRight, ArrowLeft, Copy, CheckCheck, X } from 'lucide-react';
 import {
@@ -38,6 +38,15 @@ function getIncidentDateTimeError(date: string, time: string, now = Date.now()) 
   return '';
 }
 
+const MAX_PHOTOS = 3;
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+type SelectedPhoto = {
+  id: string;
+  file: File;
+  preview: string;
+};
+
 function ReportForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -61,7 +70,7 @@ function ReportForm() {
   const [submitError, setSubmitError] = useState('');
   const [submittedReportCode, setSubmittedReportCode] = useState('');
   const [submittedReportId, setSubmittedReportId] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [authChecked, setAuthChecked] = useState(false);
   const [dateTimeError, setDateTimeError] = useState('');
   const [currentTime, setCurrentTime] = useState(() => Date.now());
@@ -87,6 +96,15 @@ function ReportForm() {
   useEffect(() => {
     const interval = window.setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => window.clearInterval(interval);
+  }, []);
+
+  // Dialog ini portal ke document.body, jadi tetap terlihat saat Activity
+  // menyembunyikan halaman. Tutup dulu sebelum halaman ditinggalkan.
+  useLayoutEffect(() => {
+    return () => {
+      setIsSuccess(false);
+      setIsCopied(false);
+    };
   }, []);
 
   useEffect(() => {
@@ -123,6 +141,42 @@ function ReportForm() {
     return true;
   };
 
+  const addPhotos = (files: File[]) => {
+    const remaining = MAX_PHOTOS - photos.length;
+    if (remaining <= 0) {
+      toast.error(`Maksimal ${MAX_PHOTOS} foto per laporan.`);
+      return;
+    }
+
+    const accepted: SelectedPhoto[] = [];
+    for (const file of files.slice(0, remaining)) {
+      if (file.size > MAX_PHOTO_BYTES) {
+        toast.error(`${file.name} melebihi 5MB dan tidak ditambahkan.`);
+        continue;
+      }
+      accepted.push({ id: crypto.randomUUID(), file, preview: URL.createObjectURL(file) });
+    }
+
+    if (files.length > remaining) {
+      toast.error(`Maksimal ${MAX_PHOTOS} foto per laporan.`);
+    }
+    if (accepted.length === 0) return;
+
+    setSubmitError('');
+    setPhotos((current) => [...current, ...accepted]);
+  };
+
+  const removePhoto = (id: string) => {
+    const target = photos.find((photo) => photo.id === id);
+    if (target) URL.revokeObjectURL(target.preview);
+    setPhotos((current) => current.filter((photo) => photo.id !== id));
+  };
+
+  const clearPhotos = () => {
+    photos.forEach((photo) => URL.revokeObjectURL(photo.preview));
+    setPhotos([]);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -145,9 +199,10 @@ function ReportForm() {
     }
 
       let imageUrl: string | null = null;
-      if (imageFile) {
-        const uploadFile = await optimizeImageFile(imageFile, { blur: reportType === 'temuan' });
-        const extension = uploadFile.type === 'image/webp' ? 'webp' : uploadFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const imageUrls: string[] = [];
+      for (const photo of photos) {
+        const uploadFile = await optimizeImageFile(photo.file, { blur: reportType === 'temuan' });
+        const extension = uploadFile.type === 'image/webp' ? 'webp' : photo.file.name.split('.').pop()?.toLowerCase() || 'jpg';
         const imagePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
         const { error: uploadError } = await supabase.storage.from('item-images').upload(imagePath, uploadFile, { contentType: uploadFile.type, upsert: false });
         if (uploadError) {
@@ -155,7 +210,9 @@ function ReportForm() {
           toast.error('Foto belum dapat diunggah. Pastikan bucket item-images sudah dibuat.');
           return;
         }
-        imageUrl = supabase.storage.from('item-images').getPublicUrl(imagePath).data.publicUrl;
+        const publicUrl = supabase.storage.from('item-images').getPublicUrl(imagePath).data.publicUrl;
+        imageUrls.push(publicUrl);
+        if (!imageUrl) imageUrl = publicUrl;
       }
 
       const { data: savedReport, error } = await supabase.from('reports').insert({
@@ -169,6 +226,7 @@ function ReportForm() {
         public_description: formData.deskripsiPublik,
         private_description: formData.ciriRahasia,
         image_url: imageUrl,
+        image_urls: imageUrls.length > 0 ? imageUrls : null,
         contact_phone: formData.telepon,
       }).select('id').single();
 
@@ -192,8 +250,13 @@ function ReportForm() {
       deskripsiPublik: '',
       ciriRahasia: '',
     }));
-    setImageFile(null);
+    clearPhotos();
     setCurrentStep(1);
+  };
+
+  const handleSuccessNavigate = (href: string) => {
+    setIsSuccess(false);
+    router.push(href);
   };
 
   return (
@@ -456,22 +519,43 @@ function ReportForm() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 block">Foto Barang (Opsional)</label>
-                  <label className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:bg-slate-50 cursor-pointer transition-colors block">
-                    <Upload className="w-6 h-6 text-slate-400 mx-auto mb-2" />
-                    <span className="text-xs font-semibold text-slate-700 block">{imageFile ? imageFile.name : 'Pilih foto barang'}</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5 block">Format PNG, JPG, atau WEBP maks 5MB{reportType === 'temuan' ? ' · foto akan diburamkan untuk privasi' : ''}</span>
-                    <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => {
-                      const file = event.target.files?.[0] || null;
-                      if (file && file.size > 5 * 1024 * 1024) {
-                        setSubmitError('Ukuran foto maksimal 5MB.');
-                        toast.error('Ukuran foto maksimal 5MB.');
-                        return;
-                      }
-                      setSubmitError('');
-                      setImageFile(file);
-                    }} />
-                  </label>
+                  <label className="text-xs font-bold text-slate-700 block">Foto Barang (Opsional, maks 3)</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {photos.map((photo) => (
+                      <div key={photo.id} className="relative group">
+                        <img
+                          src={photo.preview}
+                          alt="Pratinjau foto"
+                          className="w-full h-20 rounded-xl object-cover border border-slate-200 bg-slate-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(photo.id)}
+                          className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-1 hover:bg-rose-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-label="Hapus foto"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {photos.length < MAX_PHOTOS && (
+                      <label className="border-2 border-dashed border-slate-200 rounded-xl h-20 flex items-center justify-center hover:bg-slate-50 cursor-pointer transition-colors block" title="Tambah foto">
+                        <Upload className="w-5 h-5 text-slate-400 mb-1" />
+                        <span className="text-[10px] text-slate-500 font-medium block">Tambah</span>
+                        <input type="file" accept="image/png,image/jpeg,image/webp" multiple className="sr-only" onChange={(event) => {
+                          const files = Array.from(event.target.files || []);
+                          addPhotos(files);
+                          event.target.value = '';
+                        }} />
+                      </label>
+                    )}
+                    {photos.length >= MAX_PHOTOS && (
+                      <div className="border-2 border-dashed border-slate-200 rounded-xl h-20 flex items-center justify-center bg-slate-50 text-xs text-slate-400 block">
+                        Maksimal {MAX_PHOTOS} foto tercapai
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Format PNG, JPG, atau WEBP maks 5MB tiap foto{reportType === 'temuan' ? ' · foto akan diburamkan untuk privasi' : ''}</span>
                 </div>
 
                 <div className="pt-4 flex justify-between">
@@ -649,7 +733,7 @@ function ReportForm() {
             <div className="pt-2 flex flex-col sm:flex-row justify-center gap-2.5">
               <button
                 type="button"
-                onClick={() => router.push(submittedReportId ? `/lacak?report=${submittedReportId}` : '/lacak')}
+                onClick={() => handleSuccessNavigate(submittedReportId ? `/lacak?report=${submittedReportId}` : '/lacak')}
                 className="btn-primary text-xs py-2.5 px-4 shadow-sm min-h-[44px] flex-1 inline-flex items-center justify-center gap-1.5 font-bold"
               >
                 <span>Lacak Status Laporan</span>
@@ -657,7 +741,7 @@ function ReportForm() {
               </button>
               <button
                 type="button"
-                onClick={() => router.push('/dashboard')}
+                onClick={() => handleSuccessNavigate('/dashboard')}
                 className="btn-secondary text-xs py-2.5 px-4 min-h-[44px] flex-1 font-semibold"
               >
                 Kembali ke Dashboard

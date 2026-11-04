@@ -57,6 +57,7 @@ create table if not exists public.reports (
   public_description text not null,
   private_description text,
   image_url text,
+  image_urls text[],
   contact_phone text not null,
   status public.report_status not null default 'aktif',
   created_at timestamptz not null default now(),
