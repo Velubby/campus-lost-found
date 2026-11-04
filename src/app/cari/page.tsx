@@ -62,7 +62,7 @@ function SearchContent() {
     return items.filter(item => {
       // Exclude items that are claimed, approved, or completed
       const itemStatus = (item as CatalogItem & { status?: string }).status;
-      if (itemStatus && ['diklaim', 'disetujui', 'selesai'].includes(itemStatus.toLowerCase())) {
+      if (itemStatus && ['diklaim', 'disetujui', 'selesai', 'menunggu penyerahan'].includes(itemStatus.toLowerCase())) {
         return false;
       }
 

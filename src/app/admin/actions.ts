@@ -309,6 +309,46 @@ export async function fetchClaimsAction(
   }
 }
 
+export async function getAdminTabCountsAction(): Promise<ActionResult<{
+  claims: number;
+  lostReports: number;
+  confirmations: number;
+}>> {
+  try {
+    await requireSatpam();
+    const supabase = await createClient();
+
+    const [
+      { count: claimsCount, error: claimsErr },
+      { count: lostCount, error: lostErr },
+      { count: confirmCount, error: confirmErr },
+    ] = await Promise.all([
+      supabase.from('claims').select('id', { count: 'exact', head: true }).eq('status', 'diajukan'),
+      supabase.from('reports').select('id', { count: 'exact', head: true }).eq('type', 'hilang').eq('status', 'aktif'),
+      supabase.from('reports').select('id', { count: 'exact', head: true }).eq('type', 'temuan').eq('diterima_di_pos', false),
+    ]);
+
+    if (claimsErr || lostErr || confirmErr) {
+      console.error('Error fetching admin tab counts:', { claimsErr, lostErr, confirmErr });
+    }
+
+    return {
+      success: true,
+      data: {
+        claims: claimsCount ?? 0,
+        lostReports: lostCount ?? 0,
+        confirmations: confirmCount ?? 0,
+      },
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'UNAUTHENTICATED') return { success: false, error: 'Silakan login ulang', code: 'UNAUTHENTICATED' };
+      if (error.message === 'FORBIDDEN') return { success: false, error: 'Akses ditolak', code: 'FORBIDDEN' };
+    }
+    return { success: false, error: 'Terjadi kesalahan server', code: 'SERVER_ERROR' };
+  }
+}
+
 export async function getClaimStatsAction(): Promise<ActionResult<{ total: number; pending: number; approved: number; rejected: number; underReview: number }>> {
   try {
     await requireSatpam();
@@ -345,7 +385,8 @@ export async function fetchLostReportsAction(
   cursor?: string,
   limit = 20,
   statusFilter?: FilterReportStatus,
-  searchQuery?: string
+  searchQuery?: string,
+  typeFilter?: 'hilang' | 'temuan' | 'semua'
 ): Promise<ActionResult<{ reports: LostReport[]; total: number; hasMore: boolean; nextCursor: string | null }>> {
   try {
     await requireSatpam();
@@ -354,8 +395,13 @@ export async function fetchLostReportsAction(
     let query = supabase
       .from('reports')
       .select('*', { count: 'exact' })
-      .eq('type', 'hilang')
       .order('created_at', { ascending: false });
+
+    if (typeFilter && typeFilter !== 'semua') {
+      query = query.eq('type', typeFilter);
+    } else if (!typeFilter) {
+      query = query.eq('type', 'hilang');
+    }
 
     if (cursor) {
       query = query.lt('created_at', cursor);
@@ -428,17 +474,54 @@ export async function updateReportStatusAction(input: {
     const { supabase, user } = await requireSatpam();
     const parsed = updateReportSchema.parse(input);
 
+    const { data: existingReport, error: reportLookupError } = await supabase
+      .from('reports')
+      .select('id, type, status, item_title')
+      .eq('id', parsed.reportId)
+      .single();
+
+    if (reportLookupError || !existingReport) {
+      console.error('Report lookup error:', reportLookupError);
+      return { success: false, error: 'Laporan tidak ditemukan', code: 'NOT_FOUND' };
+    }
+
+    const reportUpdatePayload: {
+      status: ReportStatus;
+      updated_at: string;
+      diterima_di_pos?: boolean;
+    } = {
+      status: parsed.status,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (existingReport.type === 'temuan' && parsed.status === 'ditemukan') {
+      reportUpdatePayload.diterima_di_pos = true;
+    }
+
     const { error: updateError } = await supabase
       .from('reports')
-      .update({
-        status: parsed.status,
-        updated_at: new Date().toISOString(),
-      })
+      .update(reportUpdatePayload)
       .eq('id', parsed.reportId);
 
     if (updateError) {
       console.error('Update report error:', updateError);
       return { success: false, error: 'Gagal memperbarui status laporan', code: 'UPDATE_FAILED' };
+    }
+
+    if (existingReport.type === 'temuan') {
+      const itemStatus = parsed.status === 'selesai' ? 'Selesai' : 'Ditemukan';
+      const { error: itemError } = await supabase
+        .from('items')
+        .update({
+          status: itemStatus,
+          diterima_di_pos: true,
+        })
+        .eq('source_report_id', parsed.reportId);
+
+      if (itemError) {
+        console.error('Update item error:', itemError);
+        return { success: false, error: 'Gagal memperbarui status barang di katalog', code: 'ITEM_UPDATE_FAILED' };
+      }
     }
 
     let eventTitle = `Status diubah ke ${parsed.status}`;
@@ -471,6 +554,7 @@ export async function updateReportStatusAction(input: {
     revalidatePath('/admin');
     revalidatePath('/lacak');
     revalidatePath('/laporan-saya');
+    revalidatePath('/cari');
 
     return { success: true, data: null };
   } catch (error) {

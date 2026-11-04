@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { ArrowLeft, MapPin, Calendar, Clock, ShieldCheck, CheckCircle2, X } from 'lucide-react';
 import { fetchCatalogItemById, submitItemClaim, type CatalogItem } from '@/lib/supabase/items';
 import { getCurrentUser, getUserProfile } from '@/lib/supabase/auth';
+import { validateIndonesianPhone, sanitizePhoneInput, validateCiriKhusus } from '@/lib/validation';
 import { toast } from 'sonner';
 
 function ItemDetailContent() {
@@ -29,6 +30,7 @@ function ItemDetailContent() {
   // Modal claim state
   const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
+  const [isSubmittingClaim, setIsSubmittingClaim] = useState(false);
   const [claimSubmitted, setClaimSubmitted] = useState(false);
   const [claimError, setClaimError] = useState('');
   const [claimAnswers, setClaimAnswers] = useState({
@@ -42,11 +44,32 @@ function ItemDetailContent() {
     setIsCheckingAuth(true);
 
     try {
+      if (item) {
+        const s = item.status.toLowerCase();
+        if (s === 'menunggu penyerahan' || item.diterima_di_pos === false) {
+          toast.error('Barang harus dikonfirmasi diterima di Pos Keamanan sebelum dapat diklaim.');
+          return;
+        }
+        if (s === 'klaim disetujui' || s === 'selesai') {
+          toast.error('Barang ini sudah dikembalikan kepada pemiliknya.');
+          return;
+        }
+      }
+
       const user = await getCurrentUser();
       if (!user) {
         router.push(`/masuk?${new URLSearchParams({ next: `/barang/${itemId}` })}`);
         return;
       }
+
+      // Pre-fill kontak from user profile if not yet filled
+      const profile = await getUserProfile(user.id);
+      const userPhone = profile?.phone || profile?.phone_number || '';
+      setClaimAnswers((prev) => ({
+        ...prev,
+        kontak: prev.kontak || userPhone,
+      }));
+
       setClaimError('');
       setIsClaimModalOpen(true);
     } catch {
@@ -58,7 +81,26 @@ function ItemDetailContent() {
 
   const handleClaimSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!item) return;
+    if (!item || isSubmittingClaim) return;
+
+    // Validasi ciri khusus
+    const ciriValidation = validateCiriKhusus(claimAnswers.ciriKhusus);
+    if (!ciriValidation.isValid) {
+      const errorMsg = ciriValidation.error || 'Ciri khusus belum valid.';
+      setClaimError(errorMsg);
+      toast.error(errorMsg);
+      return;
+    }
+
+    // Validasi nomor kontak
+    const contactPhone = claimAnswers.kontak.trim();
+    const phoneValidation = validateIndonesianPhone(contactPhone);
+    if (!phoneValidation.isValid) {
+      const errorMsg = phoneValidation.error || 'Nomor telepon tidak valid.';
+      setClaimError(errorMsg);
+      toast.error(errorMsg);
+      return;
+    }
 
     const user = await getCurrentUser();
     if (!user) {
@@ -67,20 +109,34 @@ function ItemDetailContent() {
       return;
     }
 
-    const profile = await getUserProfile(user.id);
-    const contactPhone = claimAnswers.kontak || profile?.phone_number || '';
-    if (!contactPhone) {
-      setClaimError('Lengkapi nomor telepon di Pengaturan akun terlebih dahulu.');
-      toast.error('Lengkapi nomor telepon di Pengaturan akun terlebih dahulu.');
+    // Cek status item: klaim hanya bisa dilakukan jika barang sudah diterima di pos
+    const itemDetail = await fetchCatalogItemById(item.id);
+    if (!itemDetail) {
+      setClaimError('Barang tidak ditemukan.');
+      toast.error('Barang tidak ditemukan.');
       return;
     }
 
+    const itemStatus = itemDetail.status.toLowerCase();
+    if (itemStatus === 'menunggu penyerahan' || itemDetail.diterima_di_pos === false) {
+      setClaimError('Barang harus dikonfirmasi diterima di Pos Keamanan sebelum dapat diklaim.');
+      toast.error('Barang harus dikonfirmasi diterima di Pos Keamanan sebelum dapat diklaim.');
+      return;
+    }
+
+    if (itemStatus === 'klaim disetujui' || itemStatus === 'selesai') {
+      setClaimError('Barang ini sudah dikembalikan kepada pemiliknya dan tidak dapat diklaim lagi.');
+      toast.error('Barang ini sudah dikembalikan kepada pemiliknya.');
+      return;
+    }
+
+    setIsSubmittingClaim(true);
     try {
       const savedClaim = await submitItemClaim({
         itemId: item.id,
         userId: user.id,
-        privateAnswers: `${claimAnswers.ciriKhusus}\n${claimAnswers.isiBarang}`,
-        contactPhone,
+        privateAnswers: `${claimAnswers.ciriKhusus.trim()}${claimAnswers.isiBarang.trim() ? `\n${claimAnswers.isiBarang.trim()}` : ''}`,
+        contactPhone: phoneValidation.normalized || contactPhone,
       });
       setClaimError('');
       setClaimSubmitted(true);
@@ -93,6 +149,8 @@ function ItemDetailContent() {
     } catch {
       setClaimError('Klaim belum dapat disimpan. Coba lagi nanti.');
       toast.error('Klaim belum dapat disimpan. Coba lagi nanti.');
+    } finally {
+      setIsSubmittingClaim(false);
     }
   };
 
@@ -278,25 +336,42 @@ function ItemDetailContent() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 block">
-                    Ciri khusus yang tidak terlihat di foto
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Ciri khusus yang tidak terlihat di foto
+                    </label>
+                    <span className="text-[10px] text-slate-400">
+                      {claimAnswers.ciriKhusus.length}/500 (min. 10)
+                    </span>
+                  </div>
                   <textarea
                     required
                     rows={3}
+                    maxLength={500}
                     placeholder="Contoh: gantungan kunci kecil di resleting dalam, bekas goresan di pojok kanan bawah..."
                     value={claimAnswers.ciriKhusus}
                     onChange={(e) => setClaimAnswers({ ...claimAnswers, ciriKhusus: e.target.value })}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500"
                   />
+                  {claimAnswers.ciriKhusus.length > 0 && claimAnswers.ciriKhusus.trim().length < 10 && (
+                    <span className="text-[10px] text-amber-600 block">
+                      Minimal 10 karakter (kurang {10 - claimAnswers.ciriKhusus.trim().length} karakter lagi)
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 block">
-                    Rincian isi di dalam barang (jika berupa tas/dompet)
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Rincian isi di dalam barang (jika berupa tas/dompet)
+                    </label>
+                    <span className="text-[10px] text-slate-400">
+                      {claimAnswers.isiBarang.length}/500
+                    </span>
+                  </div>
                   <textarea
                     rows={2}
+                    maxLength={500}
                     placeholder="Sebutkan benda atau dokumen apa saja yang ada di dalamnya..."
                     value={claimAnswers.isiBarang}
                     onChange={(e) => setClaimAnswers({ ...claimAnswers, isiBarang: e.target.value })}
@@ -311,25 +386,32 @@ function ItemDetailContent() {
                   <input
                     type="tel"
                     required
+                    placeholder="Contoh: 081234567890"
+                    maxLength={16}
                     value={claimAnswers.kontak}
-                    onChange={(e) => setClaimAnswers({ ...claimAnswers, kontak: e.target.value })}
+                    onChange={(e) => setClaimAnswers({ ...claimAnswers, kontak: sanitizePhoneInput(e.target.value) })}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500"
                   />
+                  <span className="text-[10px] text-slate-400 block">
+                    Gunakan nomor aktif (awalan 08 atau 628) agar petugas dapat menghubungi Anda.
+                  </span>
                 </div>
 
                 <div className="pt-2 flex justify-end gap-2.5">
                   <button
                     type="button"
+                    disabled={isSubmittingClaim}
                     onClick={() => setIsClaimModalOpen(false)}
-                    className="btn-secondary text-xs py-2 px-4"
+                    className="btn-secondary text-xs py-2 px-4 disabled:opacity-50"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
-                    className="btn-primary text-xs py-2 px-5"
+                    disabled={isSubmittingClaim}
+                    className="btn-primary text-xs py-2 px-5 disabled:opacity-50 flex items-center gap-1.5"
                   >
-                    Kirim Pengajuan Klaim
+                    <span>{isSubmittingClaim ? 'Mengirim...' : 'Kirim Pengajuan Klaim'}</span>
                   </button>
                 </div>
               </form>

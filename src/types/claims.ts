@@ -102,6 +102,8 @@ export interface LostReport {
   created_at: string;
   updated_at: string;
   reporter?: Claimant | null;
+  diterima_di_pos?: boolean;
+  image_urls?: string[];
 }
 
 export const REPORT_STATUS_LABELS: Record<FilterReportStatus, string> = {
@@ -119,4 +121,4 @@ export const REPORT_STATUS_COLORS: Record<ReportStatus, { bg: string; text: stri
   ditemukan: { bg: 'bg-sky-50', text: 'text-sky-800', dot: 'bg-sky-500', border: 'border-sky-200' },
   klaim: { bg: 'bg-purple-50', text: 'text-purple-800', dot: 'bg-purple-500', border: 'border-purple-200' },
   selesai: { bg: 'bg-emerald-50', text: 'text-emerald-800', dot: 'bg-emerald-500', border: 'border-emerald-200' },
-};
+};

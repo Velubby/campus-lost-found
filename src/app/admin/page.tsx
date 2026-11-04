@@ -2,13 +2,14 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldAlert, RefreshCw } from 'lucide-react';
+import { ShieldAlert, RefreshCw, Clock, PackageCheck, MapPin, Calendar } from 'lucide-react';
+import Image from 'next/image';
 import { toast } from 'sonner';
 
 import { createClient } from '@/lib/supabase/client';
 import { checkIsStaff } from '@/lib/supabase/auth';
 import type { Claim, FilterStatus, LostReport, FilterReportStatus } from '@/types/claims';
-import { fetchLostReportsAction, updateReportStatusAction } from '@/app/admin/actions';
+import { fetchLostReportsAction, updateReportStatusAction, getAdminTabCountsAction } from '@/app/admin/actions';
 import { useClaims, useClaimStats, useUpdateClaim, useBulkUpdateClaims } from '@/hooks/useClaims';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
@@ -37,7 +38,7 @@ export default function AdminPage() {
   const [isStaff, setIsStaff] = useState<boolean | null>(null);
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'klaim' | 'laporan-hilang'>('klaim');
+  const [activeTab, setActiveTab] = useState<'klaim' | 'laporan-hilang' | 'konfirmasi'>('klaim');
 
   // Filter & Search State
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('semua');
@@ -60,6 +61,7 @@ export default function AdminPage() {
   const [markingFoundReport, setMarkingFoundReport] = useState<LostReport | null>(null);
   const [completingReport, setCompletingReport] = useState<LostReport | null>(null);
   const [isUpdatingReport, setIsUpdatingReport] = useState(false);
+  const [confirmingReportId, setConfirmingReportId] = useState<string | null>(null);
 
   // Copy Feedback
   const [copiedTicket, setCopiedTicket] = useState<string | null>(null);
@@ -113,6 +115,18 @@ export default function AdminPage() {
     refetch: refetchStats,
   } = useClaimStats({ enabled: isStaff === true });
 
+  const { data: tabCounts, refetch: refetchTabCounts } = useQuery({
+    queryKey: ['adminTabCounts'],
+    queryFn: async () => {
+      const res = await getAdminTabCountsAction();
+      if (!res.success) {
+        throw new Error(res.error);
+      }
+      return res.data;
+    },
+    enabled: isStaff === true,
+  });
+
   const updateClaimMutation = useUpdateClaim({
     onSuccess: () => {
       toast.success('Status klaim berhasil diperbarui');
@@ -146,18 +160,22 @@ export default function AdminPage() {
     error: reportsQueryError,
     refetch: refetchLostReports,
   } = useQuery({
-    queryKey: ['lostReports', reportStatusFilter, debouncedSearch],
+    queryKey: ['lostReports', reportStatusFilter, debouncedSearch, activeTab],
     queryFn: async () => {
-      const res = await fetchLostReportsAction(undefined, 50, reportStatusFilter, debouncedSearch);
+      const typeFilter = activeTab === 'konfirmasi' ? 'temuan' : 'hilang';
+      const status = activeTab === 'konfirmasi' ? 'semua' : reportStatusFilter;
+      const res = await fetchLostReportsAction(undefined, 50, status, debouncedSearch, typeFilter);
       if (!res.success) {
         throw new Error(res.error || 'Gagal memuat laporan');
       }
       return res.data;
     },
-    enabled: isStaff === true && activeTab === 'laporan-hilang',
+    enabled: isStaff === true && (activeTab === 'laporan-hilang' || activeTab === 'konfirmasi'),
   });
 
   const lostReports = useMemo(() => lostReportsData?.reports || [], [lostReportsData]);
+  const foundReports = useMemo(() => lostReportsData?.reports?.filter((r) => r.type === 'temuan') || [], [lostReportsData]);
+  const pendingHandoverReports = useMemo(() => foundReports.filter((r) => !r.diterima_di_pos), [foundReports]);
   const reportsError = reportsQueryError ? (reportsQueryError as Error).message : null;
 
   // Processable claims selection
@@ -266,6 +284,8 @@ export default function AdminPage() {
         }
         setMarkingFoundReport(null);
         queryClient.invalidateQueries({ queryKey: ['lostReports'] });
+        queryClient.invalidateQueries({ queryKey: ['adminTabCounts'] });
+        router.refresh();
       } else {
         toast.error(res.error || 'Gagal mengubah status laporan');
       }
@@ -292,6 +312,8 @@ export default function AdminPage() {
         }
         setCompletingReport(null);
         queryClient.invalidateQueries({ queryKey: ['lostReports'] });
+        queryClient.invalidateQueries({ queryKey: ['adminTabCounts'] });
+        router.refresh();
       } else {
         toast.error(res.error || 'Gagal menyelesaikan laporan');
       }
@@ -310,7 +332,35 @@ export default function AdminPage() {
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   };
 
+  const handleConfirmItemHandover = async (report: LostReport) => {
+    setConfirmingReportId(report.id);
+    try {
+      const res = await updateReportStatusAction({
+        reportId: report.id,
+        status: 'ditemukan',
+        finderName: report.reporter?.full_name || 'Pelapor/Petugas',
+        storageLocation: 'Pos Satpam Gerbang Utama',
+        note: 'Barang diterima dan diverifikasi oleh petugas keamanan di posko',
+      });
+
+      if (res.success) {
+        toast.success(`Barang "${report.item_title}" berhasil dikonfirmasi dan dimasukkan ke katalog.`);
+        await queryClient.invalidateQueries({ queryKey: ['lostReports'] });
+        await queryClient.invalidateQueries({ queryKey: ['adminTabCounts'] });
+        router.refresh();
+      } else {
+        toast.error(res.error || 'Gagal mengonfirmasi penyerahan barang');
+      }
+    } catch (err) {
+      console.error('Error confirming item handover:', err);
+      toast.error('Terjadi kesalahan saat mengonfirmasi barang');
+    } finally {
+      setConfirmingReportId(null);
+    }
+  };
+
   const handleRefresh = () => {
+    refetchTabCounts();
     if (activeTab === 'klaim') {
       refetchClaims();
       refetchStats();
@@ -380,12 +430,17 @@ export default function AdminPage() {
           }`}
         >
           <span>Klaim Barang Temuan</span>
-          {stats?.pending ? (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500 text-white font-extrabold">
-              {stats.pending}
-            </span>
-          ) : null}
+          <span
+            className={`min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-[11px] font-extrabold tabular-nums ${
+              activeTab === 'klaim'
+                ? 'bg-amber-500 text-white'
+                : 'bg-slate-100 text-slate-700'
+            }`}
+          >
+            {tabCounts?.claims ?? stats?.pending ?? 0}
+          </span>
         </button>
+
         <button
           type="button"
           onClick={() => setActiveTab('laporan-hilang')}
@@ -396,13 +451,159 @@ export default function AdminPage() {
           }`}
         >
           <span>Laporan Barang Hilang</span>
-          {lostReports.filter((r) => r.status === 'aktif').length > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500 text-white font-extrabold">
-              {lostReports.filter((r) => r.status === 'aktif').length}
-            </span>
-          )}
+          <span
+            className={`min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-[11px] font-extrabold tabular-nums ${
+              activeTab === 'laporan-hilang'
+                ? 'bg-amber-500 text-white'
+                : 'bg-slate-100 text-slate-700'
+            }`}
+          >
+            {tabCounts?.lostReports ?? 0}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('konfirmasi')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            activeTab === 'konfirmasi'
+              ? 'bg-[#123356] text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+          }`}
+        >
+          <span>Konfirmasi Barang</span>
+          <span
+            className={`min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-[11px] font-extrabold tabular-nums ${
+              activeTab === 'konfirmasi'
+                ? 'bg-amber-500 text-white'
+                : 'bg-slate-100 text-slate-700'
+            }`}
+          >
+            {tabCounts?.confirmations ?? 0}
+          </span>
         </button>
       </div>
+
+      {activeTab === 'konfirmasi' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-[#123356]">Konfirmasi Penyerahan Barang</h2>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                Daftar barang temuan yang dilaporkan sivitas dan menunggu verifikasi fisik di pos keamanan.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => refetchLostReports()}
+              className="self-start sm:self-auto flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isReportsFetching ? 'animate-spin' : ''}`} />
+              <span>Segarkan</span>
+            </button>
+          </div>
+
+          {isReportsLoading ? (
+            <div className="apple-card p-12 text-center text-slate-500 bg-white border border-slate-200/90 rounded-2xl">
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto text-sky-600 mb-3" />
+              <p className="text-sm font-medium">Sedang memuat data barang temuan...</p>
+            </div>
+          ) : pendingHandoverReports.length === 0 ? (
+            <div className="apple-card p-12 text-center text-slate-500 bg-white border border-slate-200/90 rounded-2xl">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+                <PackageCheck className="w-6 h-6" />
+              </div>
+              <p className="text-base font-semibold text-slate-800">Tidak ada barang yang menunggu penyerahan</p>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                Semua barang temuan yang dilaporkan telah dikonfirmasi dan diamankan di pos keamanan.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {pendingHandoverReports.map((report) => (
+                <article
+                  key={report.id}
+                  className="apple-card p-5 bg-white border border-slate-200/90 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                    {/* Image & Main Info */}
+                    <div className="flex items-start gap-4 flex-1">
+                      {report.image_url || (report.image_urls?.length ?? 0) > 0 ? (
+                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
+                          <Image
+                            src={report.image_url || report.image_urls?.[0] || ''}
+                            alt={report.item_title}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-slate-100 shrink-0 border border-slate-200 flex items-center justify-center">
+                          <Clock className="w-6 h-6 text-slate-400" />
+                        </div>
+                      )}
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-md border border-sky-200/60">
+                            {report.category}
+                          </span>
+                          <span className="text-xs text-slate-400 font-mono">
+                            {report.report_code}
+                          </span>
+                        </div>
+                        <h3 className="font-bold text-base text-[#123356] truncate">
+                          {report.item_title}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                            {report.location}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            {new Date(report.incident_at).toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                        {report.public_description && (
+                          <p className="text-xs text-slate-600 line-clamp-2 mt-1">
+                            {report.public_description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto shrink-0 pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        Menunggu Penyerahan
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleConfirmItemHandover(report)}
+                        disabled={confirmingReportId === report.id}
+                        className="btn-primary text-xs py-2 px-4 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed w-full sm:w-auto"
+                      >
+                        {confirmingReportId === report.id ? (
+                          <>
+                            <span className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            <span>Memproses...</span>
+                          </>
+                        ) : (
+                          'Tandai Diterima di Pos'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* TAB 1: KLAIM */}
       {activeTab === 'klaim' && (

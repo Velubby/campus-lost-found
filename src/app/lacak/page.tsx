@@ -15,29 +15,29 @@ const CONTACT_EMAIL = 'mailto:cs-lnf@kampus.ac.id';
 function getReportProgress(report: Pick<UserReportRow, 'type' | 'status'>) {
   const isFoundReport = report.type === 'temuan';
   const steps = isFoundReport
-    ? ['Temuan dilaporkan', 'Menunggu pemilik', 'Verifikasi klaim', 'Selesai']
+    ? ['Temuan dilaporkan', 'Menunggu Penyerahan', 'Verifikasi klaim', 'Selesai']
     : ['Laporan dibuat', 'Pencarian', 'Barang ditemukan', 'Verifikasi klaim', 'Selesai'];
   const statusIndex = {
     draf: 0,
-    aktif: 1,
-    ditemukan: isFoundReport ? 1 : 2,
+    aktif: isFoundReport ? 1 : 2,
+    ditemukan: isFoundReport ? 2 : 3,
     klaim: isFoundReport ? 2 : 3,
     selesai: steps.length - 1,
   }[report.status];
   const statusLabel = {
     draf: 'Draf',
-    aktif: isFoundReport ? 'Menunggu pemilik' : 'Dalam pencarian',
-    ditemukan: isFoundReport ? 'Menunggu pemilik' : 'Barang ditemukan',
+    aktif: isFoundReport ? 'Menunggu Penyerahan' : 'Dalam pencarian',
+    ditemukan: isFoundReport ? 'Barang ditemukan di Pos' : 'Barang ditemukan',
     klaim: 'Verifikasi klaim',
     selesai: 'Laporan selesai',
   }[report.status];
   const description = {
     draf: 'Laporan masih berupa draf dan belum masuk proses penanganan.',
     aktif: isFoundReport
-      ? 'Temuan sudah dilaporkan. Menunggu pemilik mengajukan klaim kepemilikan.'
+      ? 'Laporan temuan diterima. Silakan bawa barang ke Pos Keamanan untuk verifikasi.'
       : 'Laporan kehilangan aktif. Barang masih dalam pencarian.',
     ditemukan: isFoundReport
-      ? 'Barang temuan menunggu pemilik yang dapat membuktikan kepemilikannya.'
+      ? 'Barang temuan telah dinyatakan ditemukan di Pos Ko. Proses klaim dapat dimulai.'
       : 'Barang telah dinyatakan ditemukan. Kepemilikan perlu diverifikasi sebelum pengambilan.',
     klaim: 'Ada klaim kepemilikan yang perlu diverifikasi oleh petugas.',
     selesai: 'Laporan telah ditandai selesai. Lihat riwayat aktivitas untuk rincian penyelesaiannya.',

@@ -281,6 +281,7 @@ export default function MyReportsPage() {
         <div className="space-y-4">
           {filteredReports.length > 0 ? (
             filteredReports.map((report) => {
+              const isMenunggu = (report.status as string) === 'Menunggu Penyerahan';
               const isFoundLostItem = report.type === 'hilang' && report.status === 'ditemukan';
 
               return (
@@ -319,6 +320,11 @@ export default function MyReportsPage() {
                               className="object-cover"
                             />
                           </div>
+                          {isMenunggu && (
+                            <div className="absolute top-1 left-1 bg-rose-600 text-white text-[10px] font-bold rounded px-2">
+                              Menunggu Penyerahan
+                            </div>
+                          )}
                           {report.image_urls?.slice(1).map((url, i) => (
                             <img
                               key={i}

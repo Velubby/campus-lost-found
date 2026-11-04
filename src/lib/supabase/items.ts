@@ -12,6 +12,7 @@ export interface CatalogItem {
   image: string | null;
   description: string;
   status: string;
+  diterima_di_pos?: boolean;
 }
 
 type ItemRow = {
@@ -23,6 +24,7 @@ type ItemRow = {
   image_url: string | null;
   description: string;
   status: string;
+  diterima_di_pos?: boolean;
 };
 
 export function mapItem(row: ItemRow): CatalogItem {
@@ -40,13 +42,15 @@ export function mapItem(row: ItemRow): CatalogItem {
     image: row.image_url,
     description: row.description,
     status: row.status,
+    diterima_di_pos: row.diterima_di_pos ?? false,
   };
 }
 
 export async function fetchCatalogItems(options?: { withinHours?: number }) {
   let query = createClient()
     .from('items')
-    .select('id, title, category, location, found_at, image_url, description, status')
+    .select('id, title, category, location, found_at, image_url, description, status, diterima_di_pos')
+    .eq('diterima_di_pos', true)
     .neq('status', 'Klaim Disetujui')
     .neq('status', 'Selesai')
     .order('found_at', { ascending: false });
@@ -64,7 +68,7 @@ export async function fetchCatalogItems(options?: { withinHours?: number }) {
 export async function fetchCatalogItemById(id: string): Promise<CatalogItem | null> {
   const { data, error } = await createClient()
     .from('items')
-    .select('id, title, category, location, found_at, image_url, description, status')
+    .select('id, title, category, location, found_at, image_url, description, status, diterima_di_pos')
     .eq('id', id)
     .maybeSingle();
 

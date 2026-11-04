@@ -37,6 +37,7 @@ create table if not exists public.items (
   location text not null,
   found_at timestamptz not null,
   image_url text,
+  diterima_di_pos boolean default false,
   description text not null,
   private_notes text,
   status text not null default 'Ditemukan',
@@ -58,6 +59,7 @@ create table if not exists public.reports (
   private_description text,
   image_url text,
   image_urls text[],
+  diterima_di_pos boolean default false,
   contact_phone text not null,
   status public.report_status not null default 'aktif',
   created_at timestamptz not null default now(),
@@ -97,6 +99,8 @@ alter table public.claims alter column report_id drop not null;
 alter table public.claims add column if not exists pickup_location text;
 alter table public.claims add column if not exists pickup_at timestamptz;
 alter table public.items add column if not exists source_report_id uuid unique;
+alter table public.reports add column if not exists diterima_di_pos boolean default false;
+alter table public.items add column if not exists diterima_di_pos boolean default false;
 alter table public.items drop constraint if exists items_source_report_id_fkey;
 alter table public.items add constraint items_source_report_id_fkey
   foreign key (source_report_id) references public.reports(id) on delete set null;
@@ -151,6 +155,8 @@ create policy "Anyone can browse found items"
   on public.items for select to anon, authenticated using (true);
 create policy "Users can create found items"
   on public.items for insert to authenticated with check (auth.uid() = created_by);
+create policy "Staff can update items"
+  on public.items for update using (public.is_staff()) with check (public.is_staff());
 
 create policy "Users can view their reports"
   on public.reports for select using (auth.uid() = user_id or public.is_staff());
@@ -277,7 +283,7 @@ begin
     values (
       new.item_title, new.category, new.location, new.incident_at,
       new.image_url, new.public_description, new.private_description,
-      'Ditemukan', new.id, new.user_id
+      'Menunggu Penyerahan', new.id, new.user_id
     )
     on conflict (source_report_id) do update set
       title = excluded.title,
@@ -287,7 +293,8 @@ begin
       image_url = excluded.image_url,
       description = excluded.description,
       private_notes = excluded.private_notes,
-      status = excluded.status;
+      status = 'Menunggu Penyerahan',
+      diterima_di_pos = false;
   end if;
   return new;
 end;
@@ -423,9 +430,11 @@ begin
         image_url = new.image_url,
         description = new.public_description,
         private_notes = new.private_description,
+        diterima_di_pos = new.diterima_di_pos,
         status = case
           when new.status = 'klaim' then 'Menunggu Verifikasi'
           when new.status = 'selesai' then 'Selesai'
+          when new.diterima_di_pos = true then 'Ditemukan'
           else status
         end
     where source_report_id = new.id;

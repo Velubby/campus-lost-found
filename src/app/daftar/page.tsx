@@ -7,6 +7,7 @@ import { ArrowRight, Eye, EyeOff, Lock, Mail, UserRound } from 'lucide-react';
 import { signUpUser } from '@/lib/supabase/auth';
 import { getAuthRedirectPath } from '@/lib/supabase/redirect';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
+import { validateNIM } from '@/lib/validation';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -64,6 +65,12 @@ function RegisterContent() {
     } else if (password.length < 8) validationError = 'Password harus berisi minimal 8 karakter.';
     else if (!confirmPassword) validationError = 'Konfirmasi password wajib diisi.';
     else if (password !== confirmPassword) validationError = 'Konfirmasi password belum sama dengan password.';
+    else if (studentNumber.trim()) {
+      const nimCheck = validateNIM(studentNumber);
+      if (!nimCheck.isValid) {
+        validationError = nimCheck.error || 'NIM tidak valid.';
+      }
+    }
 
     if (validationError) {
       setError(validationError);

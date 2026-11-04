@@ -14,6 +14,7 @@ import {
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { optimizeImageFile } from '@/lib/image';
+import { validateIndonesianPhone, sanitizePhoneInput, validateFullName, validateEmail } from '@/lib/validation';
 
 function getJakartaDateTime(timestamp = Date.now()) {
   const value = new Date(timestamp + 7 * 60 * 60 * 1000).toISOString();
@@ -67,6 +68,7 @@ function ReportForm() {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submittedReportCode, setSubmittedReportCode] = useState('');
   const [submittedReportId, setSubmittedReportId] = useState('');
@@ -90,8 +92,7 @@ function ReportForm() {
     namaPelapor: '',
     email: '',
     telepon: '',
-    setuju: true,
-    setujuSerahkan: false
+    setuju: true
   }));
 
   useEffect(() => {
@@ -180,16 +181,75 @@ function ReportForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
-    if (!validateIncidentDateTime()) return;
-
-    if (!formData.setuju) {
-      toast.error('Harap setujui pernyataan sebelum mengirim laporan.');
+    if (!formData.namaBarang.trim()) {
+      toast.error('Nama barang wajib diisi.');
+      setCurrentStep(1);
       return;
     }
 
-    if (reportType === 'temuan' && !formData.setujuSerahkan) {
-      toast.error('Harap konfirmasi penyerahan barang ke Pos Keamanan sebelum mengirim.');
+    if (formData.namaBarang.trim().length < 3) {
+      toast.error('Nama barang terlalu singkat (minimal 3 karakter).');
+      setCurrentStep(1);
+      return;
+    }
+
+    if (!formData.lokasi.trim()) {
+      toast.error('Lokasi kejadian wajib diisi.');
+      setCurrentStep(1);
+      return;
+    }
+
+    if (formData.lokasi.trim().length < 3) {
+      toast.error('Lokasi kejadian terlalu singkat (minimal 3 karakter).');
+      setCurrentStep(1);
+      return;
+    }
+
+    if (!validateIncidentDateTime()) return;
+
+    if (!formData.deskripsiPublik.trim()) {
+      toast.error('Deskripsi publik wajib diisi.');
+      setCurrentStep(2);
+      return;
+    }
+
+    if (formData.deskripsiPublik.trim().length < 10) {
+      toast.error('Deskripsi publik minimal 10 karakter agar mudah dikenali.');
+      setCurrentStep(2);
+      return;
+    }
+
+    const nameCheck = validateFullName(formData.namaPelapor);
+    if (!nameCheck.isValid) {
+      const err = nameCheck.error || 'Nama pelapor belum valid.';
+      toast.error(err);
+      setSubmitError(err);
+      setCurrentStep(3);
+      return;
+    }
+
+    const emailCheck = validateEmail(formData.email);
+    if (!emailCheck.isValid) {
+      const err = emailCheck.error || 'Email belum valid.';
+      toast.error(err);
+      setSubmitError(err);
+      setCurrentStep(3);
+      return;
+    }
+
+    const phoneCheck = validateIndonesianPhone(formData.telepon);
+    if (!phoneCheck.isValid) {
+      const err = phoneCheck.error || 'Nomor telepon belum valid.';
+      toast.error(err);
+      setSubmitError(err);
+      setCurrentStep(3);
+      return;
+    }
+
+    if (!formData.setuju) {
+      toast.error('Harap setujui pernyataan sebelum mengirim laporan.');
       return;
     }
 
@@ -204,6 +264,10 @@ function ReportForm() {
       return;
     }
 
+    setIsSubmitting(true);
+    setSubmitError('');
+
+    try {
       let imageUrl: string | null = null;
       const imageUrls: string[] = [];
       for (const photo of photos) {
@@ -225,15 +289,15 @@ function ReportForm() {
         report_code: reportCode,
         user_id: user.id,
         type: reportType,
-        item_title: formData.namaBarang,
-        category: formData.kategori,
-        location: formData.lokasi,
+        item_title: formData.namaBarang.trim(),
+        category: formData.kategori.trim(),
+        location: formData.lokasi.trim(),
         incident_at: toJakartaIso(formData.tanggal, formData.waktu),
-        public_description: formData.deskripsiPublik,
-        private_description: formData.ciriRahasia,
+        public_description: formData.deskripsiPublik.trim(),
+        private_description: formData.ciriRahasia.trim(),
         image_url: imageUrl,
         image_urls: imageUrls.length > 0 ? imageUrls : null,
-        contact_phone: formData.telepon,
+        contact_phone: phoneCheck.normalized || formData.telepon.trim(),
       }).select('id').single();
 
       if (error || !savedReport) {
@@ -243,21 +307,27 @@ function ReportForm() {
       }
 
       setSubmittedReportId(savedReport.id);
-
-    setSubmittedReportCode(reportCode);
-    setSubmitError('');
-    setIsSuccess(true);
-    toast.success('Laporan berhasil dikirim!');
-    setFormData((prev) => ({
-      ...prev,
-      namaBarang: '',
-      lokasi: '',
-      ...getJakartaDateTime(),
-      deskripsiPublik: '',
-      ciriRahasia: '',
-    }));
-    clearPhotos();
-    setCurrentStep(1);
+      setSubmittedReportCode(reportCode);
+      setSubmitError('');
+      setIsSuccess(true);
+      toast.success('Laporan berhasil dikirim! Silakan bawa barang temuan ke Pos Keamanan terdekat untuk verifikasi.');
+      setFormData((prev) => ({
+        ...prev,
+        namaBarang: '',
+        lokasi: '',
+        ...getJakartaDateTime(),
+        deskripsiPublik: '',
+        ciriRahasia: '',
+        setuju: true
+      }));
+      clearPhotos();
+      setCurrentStep(1);
+    } catch {
+      setSubmitError('Terjadi kesalahan saat menyimpan laporan. Coba lagi nanti.');
+      toast.error('Terjadi kesalahan saat menyimpan laporan. Coba lagi nanti.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSuccessNavigate = (href: string) => {
@@ -467,8 +537,20 @@ function ReportForm() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!formData.namaBarang.trim() || !formData.lokasi.trim()) {
-                        toast.error('Harap isi nama barang dan lokasi terlebih dahulu.');
+                      if (!formData.namaBarang.trim()) {
+                        toast.error('Harap isi nama barang terlebih dahulu.');
+                        return;
+                      }
+                      if (formData.namaBarang.trim().length < 3) {
+                        toast.error('Nama barang terlalu singkat (minimal 3 karakter).');
+                        return;
+                      }
+                      if (!formData.lokasi.trim()) {
+                        toast.error('Harap isi lokasi kejadian terlebih dahulu.');
+                        return;
+                      }
+                      if (formData.lokasi.trim().length < 3) {
+                        toast.error('Lokasi kejadian terlalu singkat (minimal 3 karakter).');
                         return;
                       }
                       if (!validateIncidentDateTime()) return;
@@ -492,17 +574,28 @@ function ReportForm() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 block">
-                    Deskripsi Publik (Bisa dibaca umum)
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Deskripsi Publik (Bisa dibaca umum)
+                    </label>
+                    <span className="text-[10px] text-slate-400">
+                      {formData.deskripsiPublik.length}/1000 (min. 10)
+                    </span>
+                  </div>
                   <textarea
                     rows={3}
                     required
+                    maxLength={1000}
                     placeholder="Sebutkan warna utama, bentuk, dan kondisi luar yang wajar diketahui umum..."
                     value={formData.deskripsiPublik}
                     onChange={(e) => setFormData({ ...formData, deskripsiPublik: e.target.value })}
                     className="form-input w-full"
                   />
+                  {formData.deskripsiPublik.length > 0 && formData.deskripsiPublik.trim().length < 10 && (
+                    <span className="text-[10px] text-amber-600 block">
+                      Minimal 10 karakter (kurang {10 - formData.deskripsiPublik.trim().length} karakter lagi)
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -510,13 +603,19 @@ function ReportForm() {
                     <label className="text-xs font-bold text-slate-700 block">
                       Ciri Rahasia / Bukti Kepemilikan (Privat)
                     </label>
-                    <span className="text-[10px] text-amber-600 font-semibold flex items-center gap-1">
-                      <ShieldAlert className="w-3 h-3" />
-                      <span>Hanya dilihat petugas</span>
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400">
+                        {formData.ciriRahasia.length}/500
+                      </span>
+                      <span className="text-[10px] text-amber-600 font-semibold flex items-center gap-1">
+                        <ShieldAlert className="w-3 h-3" />
+                        <span>Hanya dilihat petugas</span>
+                      </span>
+                    </div>
                   </div>
                   <textarea
                     rows={2}
+                    maxLength={500}
                     placeholder="Contoh: ada stiker di bagian bawah, foto di dalam dompet, wallpaper kunci layar..."
                     value={formData.ciriRahasia}
                     onChange={(e) => setFormData({ ...formData, ciriRahasia: e.target.value })}
@@ -580,6 +679,10 @@ function ReportForm() {
                         toast.error('Harap isi deskripsi publik terlebih dahulu.');
                         return;
                       }
+                      if (formData.deskripsiPublik.trim().length < 10) {
+                        toast.error('Deskripsi publik minimal 10 karakter agar mudah dikenali.');
+                        return;
+                      }
                       setCurrentStep(3);
                     }}
                     className="btn-primary text-xs"
@@ -628,10 +731,15 @@ function ReportForm() {
                   <input
                     type="tel"
                     required
+                    maxLength={16}
+                    placeholder="Contoh: 081234567890"
                     value={formData.telepon}
-                    onChange={(e) => setFormData({ ...formData, telepon: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, telepon: sanitizePhoneInput(e.target.value) })}
                     className="form-input w-full"
                   />
+                  <span className="text-[10px] text-slate-400 block">
+                    Gunakan nomor aktif (awalan 08 atau 628 dengan 10–15 digit) agar petugas dapat menghubungi Anda.
+                  </span>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-start gap-2.5">
@@ -646,21 +754,6 @@ function ReportForm() {
                     Saya menyatakan informasi di atas benar dan bersedia dihubungi petugas posko untuk keperluan verifikasi pengembalian barang.
                   </label>
                 </div>
-                {reportType === 'temuan' && (
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-start gap-2.5 mt-2">
-                    <input
-                      type="checkbox"
-                      id="setujuSerahkan"
-                      checked={formData.setujuSerahkan}
-                      onChange={(e) => setFormData({ ...formData, setujuSerahkan: e.target.checked })}
-                      className="w-4 h-4 rounded text-sky-600 border-slate-300 mt-0.5"
-                    />
-                    <label htmlFor="setujuSerahkan" className="select-none leading-relaxed">
-                      Saya telah menyerahkan barang ini ke Pos Keamanan Utama Gedung B.
-                    </label>
-                  </div>
-                )}
-
                 <div className="pt-4 flex justify-between">
                   <button
                     type="button"
@@ -672,9 +765,10 @@ function ReportForm() {
                   </button>
                   <button
                     type="submit"
-                    className="btn-primary text-xs py-2.5 px-6 shadow-md"
+                    disabled={isSubmitting}
+                    className="btn-primary text-xs py-2.5 px-6 shadow-md disabled:opacity-50 flex items-center gap-2"
                   >
-                    Kirim Laporan Resmi
+                    <span>{isSubmitting ? 'Mengirim Laporan...' : 'Kirim Laporan Resmi'}</span>
                   </button>
                 </div>
               </div>
