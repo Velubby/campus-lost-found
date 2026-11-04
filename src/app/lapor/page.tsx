@@ -90,7 +90,8 @@ function ReportForm() {
     namaPelapor: '',
     email: '',
     telepon: '',
-    setuju: true
+    setuju: true,
+    setujuSerahkan: false
   }));
 
   useEffect(() => {
@@ -184,6 +185,11 @@ function ReportForm() {
 
     if (!formData.setuju) {
       toast.error('Harap setujui pernyataan sebelum mengirim laporan.');
+      return;
+    }
+
+    if (reportType === 'temuan' && !formData.setujuSerahkan) {
+      toast.error('Harap konfirmasi penyerahan barang ke Pos Keamanan sebelum mengirim.');
       return;
     }
 
@@ -640,6 +646,20 @@ function ReportForm() {
                     Saya menyatakan informasi di atas benar dan bersedia dihubungi petugas posko untuk keperluan verifikasi pengembalian barang.
                   </label>
                 </div>
+                {reportType === 'temuan' && (
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-start gap-2.5 mt-2">
+                    <input
+                      type="checkbox"
+                      id="setujuSerahkan"
+                      checked={formData.setujuSerahkan}
+                      onChange={(e) => setFormData({ ...formData, setujuSerahkan: e.target.checked })}
+                      className="w-4 h-4 rounded text-sky-600 border-slate-300 mt-0.5"
+                    />
+                    <label htmlFor="setujuSerahkan" className="select-none leading-relaxed">
+                      Saya telah menyerahkan barang ini ke Pos Keamanan Utama Gedung B.
+                    </label>
+                  </div>
+                )}
 
                 <div className="pt-4 flex justify-between">
                   <button
