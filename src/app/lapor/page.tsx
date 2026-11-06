@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useLayoutEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ShieldAlert, Upload, CheckCircle2, ArrowRight, ArrowLeft, Copy, CheckCheck, X } from 'lucide-react';
+import { ShieldAlert, Upload, Camera, CheckCircle2, ArrowRight, ArrowLeft, Copy, CheckCheck, X } from 'lucide-react';
 import {
   Dialog,
   DialogPortal,
@@ -357,14 +357,14 @@ function ReportForm() {
           <button
             type="button"
             onClick={() => handleSwitchType('hilang')}
-            className={`segmented-control-btn px-6 py-2 ${reportType === 'hilang' ? 'active' : ''}`}
+            className={`segmented-control-btn px-4 sm:px-6 py-2 ${reportType === 'hilang' ? 'active' : ''}`}
           >
             Barang Hilang
           </button>
           <button
             type="button"
             onClick={() => handleSwitchType('temuan')}
-            className={`segmented-control-btn px-6 py-2 ${reportType === 'temuan' ? 'active' : ''}`}
+            className={`segmented-control-btn px-4 sm:px-6 py-2 ${reportType === 'temuan' ? 'active' : ''}`}
           >
             Barang Ditemukan
           </button>
@@ -372,16 +372,16 @@ function ReportForm() {
       </div>
 
       {/* Step Indicators */}
-      <div className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-500">
-        <span className={`px-3 py-1 rounded-full ${currentStep === 1 ? 'bg-[#123356] text-white' : 'bg-slate-200'}`}>
+      <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-2 text-[11px] sm:text-xs font-semibold text-slate-500">
+        <span className={`px-2 sm:px-3 py-1 rounded-full ${currentStep === 1 ? 'bg-[#123356] text-white' : 'bg-slate-200'}`}>
           1. Detail Barang
         </span>
         <span className="text-slate-300">→</span>
-        <span className={`px-3 py-1 rounded-full ${currentStep === 2 ? 'bg-[#123356] text-white' : 'bg-slate-200'}`}>
+        <span className={`px-2 sm:px-3 py-1 rounded-full ${currentStep === 2 ? 'bg-[#123356] text-white' : 'bg-slate-200'}`}>
           2. Ciri Spesifik
         </span>
         <span className="text-slate-300">→</span>
-        <span className={`px-3 py-1 rounded-full ${currentStep === 3 ? 'bg-[#123356] text-white' : 'bg-slate-200'}`}>
+        <span className={`px-2 sm:px-3 py-1 rounded-full ${currentStep === 3 ? 'bg-[#123356] text-white' : 'bg-slate-200'}`}>
           3. Konfirmasi
         </span>
       </div>
@@ -623,44 +623,74 @@ function ReportForm() {
                   />
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-700 block">Foto Barang (Opsional, maks 3)</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                     {photos.map((photo) => (
                       <div key={photo.id} className="relative group">
                         <img
                           src={photo.preview}
                           alt="Pratinjau foto"
-                          className="w-full h-20 rounded-xl object-cover border border-slate-200 bg-slate-100"
+                          className="w-full h-24 rounded-xl object-cover border border-slate-200 bg-slate-100"
                         />
                         <button
                           type="button"
                           onClick={() => removePhoto(photo.id)}
-                          className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-1 hover:bg-rose-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute -top-1 -right-1 flex h-11 w-11 items-center justify-center rounded-full"
                           aria-label="Hapus foto"
                         >
-                          <X className="w-3 h-3" />
+                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-rose-600 text-white shadow-md transition-colors hover:bg-rose-700">
+                            <X className="w-3.5 h-3.5" />
+                          </span>
                         </button>
                       </div>
                     ))}
-                    {photos.length < MAX_PHOTOS && (
-                      <label className="border-2 border-dashed border-slate-200 rounded-xl h-20 flex items-center justify-center hover:bg-slate-50 cursor-pointer transition-colors block" title="Tambah foto">
-                        <Upload className="w-5 h-5 text-slate-400 mb-1" />
-                        <span className="text-[10px] text-slate-500 font-medium block">Tambah</span>
-                        <input type="file" accept="image/png,image/jpeg,image/webp" multiple className="sr-only" onChange={(event) => {
-                          const files = Array.from(event.target.files || []);
-                          addPhotos(files);
-                          event.target.value = '';
-                        }} />
-                      </label>
-                    )}
-                    {photos.length >= MAX_PHOTOS && (
-                      <div className="border-2 border-dashed border-slate-200 rounded-xl h-20 flex items-center justify-center bg-slate-50 text-xs text-slate-400 block">
-                        Maksimal {MAX_PHOTOS} foto tercapai
-                      </div>
-                    )}
                   </div>
-                  <span className="text-[10px] text-slate-400 mt-0.5 block">Format PNG, JPG, atau WEBP maks 5MB tiap foto{reportType === 'temuan' ? ' · foto akan diburamkan untuk privasi' : ''}</span>
+
+                  {photos.length < MAX_PHOTOS ? (
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {/* Camera: langsung buka kamera belakang di ponsel */}
+                      <label className="flex flex-col items-center justify-center gap-1 border-2 border-dashed border-sky-300 bg-sky-50/60 rounded-xl h-20 cursor-pointer hover:bg-sky-50 active:bg-sky-100 transition-colors select-none" title="Ambil foto langsung">
+                        <Camera className="w-5 h-5 text-sky-600" />
+                        <span className="text-[11px] text-sky-700 font-semibold">Ambil Foto</span>
+                        <span className="text-[9px] text-sky-500">Kamera langsung</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="sr-only"
+                          onChange={(event) => {
+                            const files = Array.from(event.target.files || []);
+                            addPhotos(files);
+                            event.target.value = '';
+                          }}
+                        />
+                      </label>
+
+                      {/* Gallery: pilih dari galeri */}
+                      <label className="flex flex-col items-center justify-center gap-1 border-2 border-dashed border-slate-200 rounded-xl h-20 cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors select-none" title="Pilih dari galeri">
+                        <Upload className="w-5 h-5 text-slate-400" />
+                        <span className="text-[11px] text-slate-600 font-semibold">Galeri</span>
+                        <span className="text-[9px] text-slate-400">Pilih dari file</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="sr-only"
+                          onChange={(event) => {
+                            const files = Array.from(event.target.files || []);
+                            addPhotos(files);
+                            event.target.value = '';
+                          }}
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-slate-200 rounded-xl h-20 flex items-center justify-center bg-slate-50 text-xs text-slate-400">
+                      Maksimal {MAX_PHOTOS} foto tercapai
+                    </div>
+                  )}
+                  <span className="text-[10px] text-slate-400 block leading-relaxed">Format PNG, JPG, atau WEBP maks 5MB tiap foto{reportType === 'temuan' ? ' · foto akan diburamkan untuk privasi' : ''}. Di ponsel, tombol <span className="font-semibold text-sky-600">Ambil Foto</span> langsung membuka kamera.</span>
                 </div>
 
                 <div className="pt-4 flex justify-between">

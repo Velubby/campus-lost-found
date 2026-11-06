@@ -419,11 +419,11 @@ export default function AdminPage() {
       </header>
 
       {/* Primary Tab Switcher */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
         <button
           type="button"
           onClick={() => setActiveTab('klaim')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
             activeTab === 'klaim'
               ? 'bg-[#123356] text-white shadow-sm'
               : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
@@ -444,7 +444,7 @@ export default function AdminPage() {
         <button
           type="button"
           onClick={() => setActiveTab('laporan-hilang')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
             activeTab === 'laporan-hilang'
               ? 'bg-[#123356] text-white shadow-sm'
               : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
@@ -465,7 +465,7 @@ export default function AdminPage() {
         <button
           type="button"
           onClick={() => setActiveTab('konfirmasi')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
             activeTab === 'konfirmasi'
               ? 'bg-[#123356] text-white shadow-sm'
               : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'

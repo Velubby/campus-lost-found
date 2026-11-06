@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, LogOut, Settings } from 'lucide-react';
+import { Search, LogOut, Settings, Menu, X } from 'lucide-react';
 import { signOutUser } from '@/lib/supabase/auth';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -15,6 +16,12 @@ export default function Navbar() {
   const [profile, setProfile] = useState<{ name: string; initials: string; role: string } | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -48,6 +55,25 @@ export default function Navbar() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileNavOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [mobileNavOpen]);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+    setMenuOpen(false);
+  }, [pathname]);
+
   const isCurrent = (path: string) => {
     if (path === '/') return pathname === '/';
     // Exact segment match: /lapor should not match /laporan-saya
@@ -59,6 +85,7 @@ export default function Navbar() {
   const handleLogout = async () => {
     await signOutUser();
     setMenuOpen(false);
+    setMobileNavOpen(false);
     toast.success('Berhasil keluar dari akun');
     router.push('/masuk');
     router.refresh();
@@ -85,7 +112,7 @@ export default function Navbar() {
               <span className="font-bold text-[1.05rem] text-[#123356] tracking-tight leading-none">
                 Campus L&amp;F
               </span>
-              <span className="text-[0.6875rem] font-medium text-slate-500 tracking-wider uppercase mt-0.5">
+              <span className="hidden sm:block text-[0.6875rem] font-medium text-slate-500 tracking-wider uppercase mt-0.5">
                 Portal Resmi
               </span>
             </div>
@@ -94,75 +121,175 @@ export default function Navbar() {
 
         {/* Center: Navigation Links */}
         {!isAuthPage && authReady && (
-          <nav aria-label="Navigasi Utama" className="hidden md:flex items-center gap-1 bg-black/4 p-1 rounded-xl border border-black/5">
-            <Link
-              href="/"
-              className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
-                isCurrent('/') && pathname === '/'
-                  ? 'bg-white text-[#123356] shadow-sm font-semibold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-              }`}
-            >
-              Beranda
-            </Link>
-            <Link
-              href="/dashboard"
-              className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
-                isCurrent('/dashboard')
-                  ? 'bg-white text-[#123356] shadow-sm font-semibold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-              }`}
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/cari"
-              className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
-                isCurrent('/cari')
-                  ? 'bg-white text-[#123356] shadow-sm font-semibold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-              }`}
-            >
-              {profile?.role === 'satpam' ? 'List Barang' : 'Cari Barang'}
-            </Link>
-            {profile && <Link
-              href="/lapor"
-              className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
-                isCurrent('/lapor')
-                  ? 'bg-white text-[#123356] shadow-sm font-semibold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-              }`}
-            >
-              Lapor Barang
-            </Link>}
-            {profile && profile.role === 'satpam' && <Link
-              href="/admin"
-              className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
-                isCurrent('/admin')
-                  ? 'bg-white text-[#123356] shadow-sm font-semibold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-              }`}
-            >
-              Petugas
-            </Link>}
-            {profile && <Link
-              href="/laporan-saya"
-              className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
-                isCurrent('/laporan-saya')
-                  ? 'bg-white text-[#123356] shadow-sm font-semibold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-              }`}
-            >
-              Laporan Saya
-            </Link>}
-          </nav>
+          <>
+            {/* Desktop: horizontal pill nav */}
+            <nav aria-label="Navigasi Utama" className="hidden md:flex items-center gap-1 bg-black/4 p-1 rounded-xl border border-black/5">
+              <Link
+                href="/"
+                className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
+                  isCurrent('/') && pathname === '/'
+                    ? 'bg-white text-[#123356] shadow-sm font-semibold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                Beranda
+              </Link>
+              <Link
+                href="/dashboard"
+                className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
+                  isCurrent('/dashboard')
+                    ? 'bg-white text-[#123356] shadow-sm font-semibold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/cari"
+                className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
+                  isCurrent('/cari')
+                    ? 'bg-white text-[#123356] shadow-sm font-semibold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                {profile?.role === 'satpam' ? 'List Barang' : 'Cari Barang'}
+              </Link>
+              {profile && <Link
+                href="/lapor"
+                className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
+                  isCurrent('/lapor')
+                    ? 'bg-white text-[#123356] shadow-sm font-semibold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                Lapor Barang
+              </Link>}
+
+              {profile && profile.role === 'satpam' && <Link
+                href="/admin"
+                className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
+                  isCurrent('/admin')
+                    ? 'bg-white text-[#123356] shadow-sm font-semibold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                Petugas
+              </Link>}
+              {profile && <Link
+                href="/laporan-saya"
+                className={`px-3 py-1.5 rounded-lg text-[0.875rem] font-medium transition-all ${
+                  isCurrent('/laporan-saya')
+                    ? 'bg-white text-[#123356] shadow-sm font-semibold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                Laporan Saya
+              </Link>}
+            </nav>
+
+            {/* Mobile menu overlay is portaled to the body below */}
+            {mounted && mobileNavOpen && createPortal(
+              <div
+                id="mobile-nav"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Menu navigasi"
+                className="md:hidden fixed inset-0 z-[60] flex flex-col bg-white shadow-2xl"
+              >
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}>
+                  <span className="font-bold text-[#123356] tracking-tight">Campus L&amp;F</span>
+                  <button
+                    type="button"
+                    onClick={() => setMobileNavOpen(false)}
+                    className="flex items-center justify-center w-10 h-10 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors"
+                    aria-label="Tutup menu"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <nav aria-label="Navigasi Seluler" className="flex-1 px-4 py-4 space-y-1 overflow-y-auto max-h-[calc(100dvh-100px)] [&>a]:min-h-11 [&>a]:flex [&>a]:items-center">
+                  <Link
+                    href="/"
+                    onClick={() => setMobileNavOpen(false)}
+                    className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isCurrent('/') && pathname === '/' ? 'bg-[#123356]/10 text-[#123356] font-semibold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                  >
+                    Beranda
+                  </Link>
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setMobileNavOpen(false)}
+                    className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isCurrent('/dashboard') ? 'bg-[#123356]/10 text-[#123356] font-semibold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/cari"
+                    onClick={() => setMobileNavOpen(false)}
+                    className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isCurrent('/cari') ? 'bg-[#123356]/10 text-[#123356] font-semibold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                  >
+                    {profile?.role === 'satpam' ? 'List Barang' : 'Cari Barang'}
+                  </Link>
+                  {profile && (
+                    <Link
+                      href="/lapor"
+                      onClick={() => setMobileNavOpen(false)}
+                      className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isCurrent('/lapor') ? 'bg-[#123356]/10 text-[#123356] font-semibold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                      Lapor Barang
+                    </Link>
+                  )}
+                  {profile && profile.role === 'satpam' && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setMobileNavOpen(false)}
+                      className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isCurrent('/admin') ? 'bg-[#123356]/10 text-[#123356] font-semibold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                      Petugas
+                    </Link>
+                  )}
+                  {profile && (
+                    <Link
+                      href="/laporan-saya"
+                      onClick={() => setMobileNavOpen(false)}
+                      className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isCurrent('/laporan-saya') ? 'bg-[#123356]/10 text-[#123356] font-semibold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                      Laporan Saya
+                    </Link>
+                  )}
+                </nav>
+                <div className="px-4 py-3 border-t border-slate-100" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
+                  <div className="flex items-center gap-2 px-2 mb-2">
+                    <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs">
+                      {profile?.initials || '?'}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold text-slate-900 leading-tight">{profile?.name || 'Masuk'}</span>
+                      <span className="text-[10px] text-slate-500 leading-none">{profile ? 'Pengguna kampus' : 'Akun pengguna'}</span>
+                    </div>
+                  </div>
+                  {profile ? (
+                    <>
+                      <Link href="/pengaturan" onClick={() => setMobileNavOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"><Settings className="w-4 h-4" /> Pengaturan akun</Link>
+                      <button type="button" onClick={handleLogout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 min-h-11 text-left text-xs text-rose-700 hover:bg-rose-50"><LogOut className="w-4 h-4" /> Keluar</button>
+                    </>
+                  ) : (
+                    <>
+                      <Link href="/masuk" onClick={() => setMobileNavOpen(false)} className="block rounded-lg px-3 py-2 text-xs text-slate-700 hover:bg-slate-50">Masuk ke akun</Link>
+                      <Link href="/daftar" onClick={() => setMobileNavOpen(false)} className="block rounded-lg px-3 py-2 text-xs text-slate-700 hover:bg-slate-50">Buat akun baru</Link>
+                    </>
+                  )}
+                </div>
+              </div>,
+              document.body,
+            )}
+          </>
         )}
 
-        {/* Right Action: Search icon + user profile pill */}
-        <div className="flex items-center gap-2.5">
+        {/* Right Action: Search icon + user profile pill + mobile menu */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
           <Link
             href="/cari"
-            className="hidden sm:inline-flex items-center justify-center w-9 h-9 rounded-lg hover:bg-black/6 text-slate-500 transition-all"
+            className="hidden min-[360px]:inline-flex items-center justify-center w-9 h-9 rounded-lg hover:bg-black/6 text-slate-500 transition-all"
             title={profile?.role === 'satpam' ? 'List Barang' : 'Cari Barang'}
             aria-label={profile?.role === 'satpam' ? 'List Barang' : 'Cari Barang'}
           >
@@ -201,6 +328,21 @@ export default function Navbar() {
             </div>
           )}
           </div>
+
+          {!isAuthPage && authReady && (
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen((open) => !open)}
+              className="md:hidden flex items-center gap-1.5 h-10 pl-2 pr-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors"
+              aria-expanded={mobileNavOpen}
+              aria-haspopup="dialog"
+              aria-controls="mobile-nav"
+              aria-label="Buka menu navigasi"
+            >
+              <Menu className="w-5 h-5" />
+              <span className="text-[11px] font-semibold">Menu</span>
+            </button>
+          )}
         </div>
 
       </div>

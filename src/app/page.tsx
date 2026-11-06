@@ -63,7 +63,7 @@ export default function HomePage() {
                   placeholder="Cari dompet, kunci, botol minum..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-3 py-2 text-sm sm:text-base text-slate-800 placeholder-slate-400 bg-transparent focus:outline-none"
+                  className="w-full min-w-0 px-3 py-2 text-sm sm:text-base text-slate-800 placeholder-slate-400 bg-transparent focus:outline-none"
                 />
                 <button
                   type="submit"

@@ -68,6 +68,46 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Keyboard focus stays visible everywhere */
+:where(a, button, [role="button"], [role="menuitem"], summary):focus-visible {
+  outline: 2px solid var(--campus-accent-blue);
+  outline-offset: 2px;
+}
+
+/* Mobile-first adjustments */
+@media (max-width: 767px) {
+  /* Prevent iOS Safari from zooming the page when an input is focused */
+  .form-input,
+  input.form-input,
+  select.form-input,
+  textarea.form-input {
+    font-size: 16px;
+  }
+
+  /* Comfortable thumb targets */
+  .btn-primary,
+  .btn-secondary {
+    min-height: 46px;
+  }
+}
+
+/* Respect notches and gesture bars on phones */
+@supports (padding: env(safe-area-inset-top)) {
+  .site-header {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Hover lift only makes sense with a real pointer */
+@media (hover: none) {
+  .apple-card:hover {
+    transform: none;
+    box-shadow: var(--shadow-card);
+    border-color: var(--apple-border);
+  }
 }
 
 /* Frosted Glass Header */

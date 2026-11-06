@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Search, MapPin, Clock, Filter, RotateCcw, AlertCircle } from 'lucide-react';
+import { Search, MapPin, Clock, Filter, RotateCcw, AlertCircle, ChevronDown } from 'lucide-react';
 import { fetchCatalogItems, type CatalogItem } from '@/lib/supabase/items';
 
 function SearchContent() {
@@ -20,6 +20,7 @@ function SearchContent() {
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [catalogError, setCatalogError] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   // Captured once at mount — stable, no re-renders
   const [now] = useState(Date.now);
 
@@ -155,31 +156,43 @@ function SearchContent() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* Left Sidebar Filter */}
-        <aside className="lg:col-span-3 apple-card p-5 space-y-6">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <aside className="lg:col-span-3 apple-card p-5 space-y-4 lg:space-y-6">
+          <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
             <h2 className="font-bold text-sm text-[#123356] flex items-center gap-2">
               <Filter className="w-4 h-4 text-sky-600" />
               <span>Filter Pencarian</span>
             </h2>
-            {(selectedCategories.length > 0 || selectedLocations.length > 0 || query || selectedLocation || timeRange !== 'all') && (
+            <div className="flex items-center gap-3">
+              {(selectedCategories.length > 0 || selectedLocations.length > 0 || query || selectedLocation || timeRange !== 'all') && (
+                <button
+                  onClick={resetFilters}
+                  className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Reset</span>
+                </button>
+              )}
               <button
-                onClick={resetFilters}
-                className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 flex items-center gap-1"
+                type="button"
+                onClick={() => setFiltersOpen((open) => !open)}
+                className="lg:hidden inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-semibold text-slate-700"
+                aria-expanded={filtersOpen}
               >
-                <RotateCcw className="w-3 h-3" />
-                <span>Reset</span>
+                {filtersOpen ? 'Tutup' : 'Buka'}
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
               </button>
-            )}
+            </div>
           </div>
 
+          <div className={`${filtersOpen ? 'block space-y-6' : 'hidden'} lg:block lg:space-y-6`}>
           {/* Category Filter */}
           <div className="space-y-2.5">
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               Kategori
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-1">
               {categories.map(cat => (
-                <label key={cat} className="flex items-center gap-2.5 text-xs text-slate-600 cursor-pointer select-none">
+                <label key={cat} className="flex items-center gap-2.5 min-h-11 text-xs text-slate-600 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={selectedCategories.includes(cat)}
@@ -197,9 +210,9 @@ function SearchContent() {
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               Lokasi Ditemukan
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-1">
               {locations.map(loc => (
-                <label key={loc} className="flex items-center gap-2.5 text-xs text-slate-600 cursor-pointer select-none">
+                <label key={loc} className="flex items-center gap-2.5 min-h-11 text-xs text-slate-600 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={selectedLocations.includes(loc)}
@@ -210,6 +223,7 @@ function SearchContent() {
                 </label>
               ))}
             </div>
+          </div>
           </div>
 
         </aside>

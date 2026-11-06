@@ -14,7 +14,7 @@ export default function Footer() {
   }, []);
 
   return (
-    <footer className="campus-footer py-14 px-4 sm:px-6 lg:px-8 mt-auto">
+    <footer className="campus-footer py-14 px-4 sm:px-6 lg:px-8 mt-auto" style={{ paddingBottom: 'calc(3.5rem + env(safe-area-inset-bottom))' }}>
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
         
         {/* Col 1 */}
@@ -44,22 +44,22 @@ export default function Footer() {
           <h3 className="text-sm font-bold text-white uppercase tracking-wider">Bantuan</h3>
           <ul className="space-y-2 text-sm text-slate-400">
             <li>
-              <Link href="/bantuan" className="hover:text-white transition-colors">
+              <Link href="/bantuan" className="inline-flex min-h-11 items-center hover:text-white transition-colors">
                 Panduan klaim barang
               </Link>
             </li>
             <li>
-              <Link href="/bantuan#faq" className="hover:text-white transition-colors">
+              <Link href="/bantuan#faq" className="inline-flex min-h-11 items-center hover:text-white transition-colors">
                 FAQ layanan Lost &amp; Found
               </Link>
             </li>
             <li>
-              <Link href="/bantuan#privasi" className="hover:text-white transition-colors">
+              <Link href="/bantuan#privasi" className="inline-flex min-h-11 items-center hover:text-white transition-colors">
                 Kebijakan privasi data mahasiswa
               </Link>
             </li>
             {isAuthenticated && <li>
-              <Link href="/lacak" className="hover:text-white transition-colors">
+              <Link href="/lacak" className="inline-flex min-h-11 items-center hover:text-white transition-colors">
                 Lacak status laporan
               </Link>
             </li>}
