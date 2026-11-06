@@ -21,6 +21,7 @@ import {
   PackageSearch,
   HandHeart,
   Ticket,
+  Bell,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -139,6 +140,10 @@ export default function MyReportsPage() {
           <Link href="/lapor" className="btn-primary text-xs flex items-center gap-2 min-h-11">
             <Plus className="w-4 h-4" />
             <span>Buat Laporan Baru</span>
+          </Link>
+          <Link href="/notifications" className="btn-secondary text-xs flex items-center gap-2 min-h-11">
+            <Bell className="w-4 h-4" />
+            <span>Notifikasi</span>
           </Link>
         </div>
       </header>

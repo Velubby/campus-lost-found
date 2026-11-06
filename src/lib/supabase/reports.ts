@@ -28,6 +28,7 @@ export type ReportEventRow = {
 
 export type ClaimRow = {
   id: string;
+  user_id?: string;
   report_id: string | null;
   item_id: string;
   status: 'diajukan' | 'ditinjau' | 'disetujui' | 'ditolak';
@@ -66,7 +67,7 @@ export async function fetchUserReports() {
       .order('created_at', { ascending: false }),
     supabase
       .from('claims')
-      .select('id, report_id, item_id, status, ticket_code, pickup_location, pickup_at, created_at, updated_at, item:items!item_id(id, title, location, image_url, status)')
+      .select('id, user_id, report_id, item_id, status, ticket_code, pickup_location, pickup_at, created_at, updated_at, item:items!item_id(id, title, location, image_url, status)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false }),
   ]);
@@ -76,6 +77,7 @@ export async function fetchUserReports() {
 
   const mappedClaims: ClaimRow[] = ((claims || []) as unknown as Array<{
     id: string;
+    user_id?: string;
     report_id: string | null;
     item_id: string;
     status: 'diajukan' | 'ditinjau' | 'disetujui' | 'ditolak';
@@ -87,6 +89,7 @@ export async function fetchUserReports() {
     item: { id?: string; title: string; location: string; image_url: string | null; status: string } | Array<{ id?: string; title: string; location: string; image_url: string | null; status: string }> | null;
   }>).map((c) => ({
     id: c.id,
+    user_id: c.user_id,
     report_id: c.report_id,
     item_id: c.item_id,
     status: c.status,
@@ -120,15 +123,105 @@ function selectLatestUserReport(reports: UserReportRow[], claims: ClaimRow[], re
 
 export async function fetchLatestUserReport(reportId?: string, ticketCode?: string) {
   const { user, reports, claims } = await fetchUserReports();
-  const { report, claim } = selectLatestUserReport(reports, claims, reportId, ticketCode);
+  const supabase = createClient();
 
-  if (!report) {
-    if (!claim) return { user, reports, claims, report: null, events: [] as ReportEventRow[], claim: null, claimItem: null };
-    const { data: claimItem } = await createClient().from('items').select('id, title, location, status').eq('id', claim.item_id).maybeSingle();
-    return { user, reports, claims, report: null, events: [] as ReportEventRow[], claim, claimItem: (claimItem || null) as ClaimItemRow | null };
+  // For finders (item owners) the ticket is NOT in their own claims list
+  // (fetchUserReports filters by user_id), so resolve ?ticket= directly.
+  // RLS ("Report and item owners can view claims") still enforces access:
+  // only claimant / item owner / staff can resolve this ticket.
+  if (ticketCode && user) {
+    const ownTicket = claims.find((item) => item.ticket_code.toLowerCase() === ticketCode.toLowerCase());
+    if (!ownTicket) {
+      const { data: ticketData } = await supabase
+        .from('claims')
+        .select('id, user_id, report_id, item_id, status, ticket_code, pickup_location, pickup_at, created_at, updated_at, item:items!item_id(id, title, location, image_url, status)')
+        .ilike('ticket_code', ticketCode)
+        .maybeSingle();
+      if (ticketData) {
+        const c = ticketData as unknown as {
+          id: string; user_id?: string; report_id: string | null; item_id: string;
+          status: ClaimRow['status']; ticket_code: string; pickup_location: string | null; pickup_at: string | null;
+          created_at: string; updated_at: string;
+          item: ClaimRow['item'] | Array<{ id?: string; title: string; location: string; image_url: string | null; status: string }> | null;
+        };
+        const mapped: ClaimRow = {
+          id: c.id,
+          user_id: c.user_id,
+          report_id: c.report_id,
+          item_id: c.item_id,
+          status: c.status,
+          ticket_code: c.ticket_code,
+          pickup_location: c.pickup_location,
+          pickup_at: c.pickup_at,
+          created_at: c.created_at,
+          updated_at: c.updated_at,
+          item: Array.isArray(c.item) ? (c.item[0] as ClaimRow['item']) || null : (c.item as ClaimRow['item']) || null,
+        };
+        const { data: claimItem } = await supabase.from('items').select('id, title, location, status').eq('id', mapped.item_id).maybeSingle();
+        return {
+          user, reports, claims,
+          report: null as UserReportRow | null,
+          events: [] as ReportEventRow[],
+          claim: mapped,
+          claimItem: (claimItem || null) as ClaimItemRow | null,
+          isClaimOwner: c.user_id === user.id,
+        };
+      }
+    }
   }
 
-  const supabase = createClient();
+  const { report, claim: selectedClaim } = selectLatestUserReport(reports, claims, reportId, ticketCode);
+  let claim = selectedClaim;
+  let isClaimOwner = !claim || !claim.user_id || claim.user_id === user?.id;
+
+  if (!report) {
+    if (!claim) return { user, reports, claims, report: null as UserReportRow | null, events: [] as ReportEventRow[], claim: null as ClaimRow | null, claimItem: null as ClaimItemRow | null, isClaimOwner: true };
+    const { data: claimItem } = await supabase.from('items').select('id, title, location, status').eq('id', claim.item_id).maybeSingle();
+    isClaimOwner = !claim.user_id || claim.user_id === user?.id;
+    return { user, reports, claims, report: null as UserReportRow | null, events: [] as ReportEventRow[], claim, claimItem: (claimItem || null) as ClaimItemRow | null, isClaimOwner };
+  }
+
+  // Finder viewing a temuan report: surface the ticket(s) on that item so
+  // the report view can link to the ticket (claims live on items, not reports).
+  if (!claim && report.type === 'temuan') {
+    const { data: itemRow } = await supabase
+      .from('items')
+      .select('id')
+      .eq('source_report_id', report.id)
+      .maybeSingle();
+    if (itemRow?.id) {
+      const { data: itemClaim } = await supabase
+        .from('claims')
+        .select('id, user_id, report_id, item_id, status, ticket_code, pickup_location, pickup_at, created_at, updated_at, item:items!item_id(id, title, location, image_url, status)')
+        .eq('item_id', itemRow.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (itemClaim) {
+        const c = itemClaim as unknown as {
+          id: string; user_id?: string; report_id: string | null; item_id: string;
+          status: ClaimRow['status']; ticket_code: string; pickup_location: string | null; pickup_at: string | null;
+          created_at: string; updated_at: string;
+          item: ClaimRow['item'] | Array<{ id?: string; title: string; location: string; image_url: string | null; status: string }> | null;
+        };
+        claim = {
+          id: c.id,
+          user_id: c.user_id,
+          report_id: c.report_id,
+          item_id: c.item_id,
+          status: c.status,
+          ticket_code: c.ticket_code,
+          pickup_location: c.pickup_location,
+          pickup_at: c.pickup_at,
+          created_at: c.created_at,
+          updated_at: c.updated_at,
+          item: Array.isArray(c.item) ? (c.item[0] as ClaimRow['item']) || null : (c.item as ClaimRow['item']) || null,
+        };
+        isClaimOwner = !claim.user_id || claim.user_id === user?.id;
+      }
+    }
+  }
+
   const { data: events, error: eventsError } = await supabase
     .from('report_events')
     .select('id, title, description, created_at')
@@ -137,7 +230,7 @@ export async function fetchLatestUserReport(reportId?: string, ticketCode?: stri
 
   if (eventsError) throw eventsError;
 
-  return { user, reports, claims, report, events: (events || []) as ReportEventRow[], claim: claim || null, claimItem: null };
+  return { user, reports, claims, report, events: (events || []) as ReportEventRow[], claim: claim || null, claimItem: null as ClaimItemRow | null, isClaimOwner };
 }
 
 

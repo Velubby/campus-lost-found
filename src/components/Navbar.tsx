@@ -9,6 +9,7 @@ import { Search, LogOut, Settings, Menu, X } from 'lucide-react';
 import { signOutUser } from '@/lib/supabase/auth';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { NotificationBell } from '@/components/NotificationBell';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -285,7 +286,7 @@ export default function Navbar() {
           </>
         )}
 
-        {/* Right Action: Search icon + user profile pill + mobile menu */}
+        {/* Right Action: Search icon + notification bell + user profile pill */}
         <div className="flex items-center gap-1.5 sm:gap-2.5">
           <Link
             href="/cari"
@@ -295,6 +296,10 @@ export default function Navbar() {
           >
             <Search className="w-4.5 h-4.5" />
           </Link>
+
+          {authReady && profile && (
+            <NotificationBell />
+          )}
 
           <div className="relative">
           <button

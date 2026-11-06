@@ -20,8 +20,8 @@ function getReportProgress(report: Pick<UserReportRow, 'type' | 'status'>) {
     : ['Laporan dibuat', 'Pencarian', 'Barang ditemukan', 'Verifikasi klaim', 'Selesai'];
   const statusIndex = {
     draf: 0,
-    aktif: isFoundReport ? 1 : 2,
-    ditemukan: isFoundReport ? 2 : 3,
+    aktif: 1,
+    ditemukan: isFoundReport ? 2 : 2,
     klaim: isFoundReport ? 2 : 3,
     selesai: steps.length - 1,
   }[report.status];
@@ -162,7 +162,8 @@ function ActivityTimeline({ events }: { events: ReportEventRow[] }) {
 function TrackingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const requestedReportId = searchParams.get('report') || undefined;
+  // Accept legacy ?id= (old notification links) as alias for ?report=
+  const requestedReportId = searchParams.get('report') || searchParams.get('id') || undefined;
   const requestedTicket = searchParams.get('ticket') || undefined;
   const [report, setReport] = useState<UserReportRow | null>(null);
   const [reports, setReports] = useState<UserReportRow[]>([]);
@@ -174,8 +175,11 @@ function TrackingContent() {
   const [scheduleError, setScheduleError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isClaimOwner, setIsClaimOwner] = useState(true);
 
   useEffect(() => {
+    setIsLoading(true);
+    setError('');
     fetchLatestUserReport(requestedReportId, requestedTicket)
       .then((result) => {
         if (!result.user) {
@@ -188,6 +192,7 @@ function TrackingContent() {
         setEvents(result.events);
         setClaim(result.claim);
         setClaimItem(result.claimItem);
+        setIsClaimOwner((result as { isClaimOwner?: boolean }).isClaimOwner ?? true);
       })
       .catch(() => setError('Status laporan belum dapat dimuat.'))
       .finally(() => setIsLoading(false));
@@ -229,10 +234,10 @@ function TrackingContent() {
       </div>
     );
 
-    const itemStatus = claimItem?.status || claim.item?.status || null;
+  const itemStatus = claimItem?.status || claim.item?.status || null;
     const { statusIndex, statusLabel, description, isApproved, isRejected, isHandedOver } = getClaimProgress(claim, itemStatus);
     const timeline = getClaimTimeline(claim, statusLabel);
-    const canSchedule = isApproved && !isHandedOver && !claim.pickup_at;
+    const canSchedule = isApproved && !isHandedOver && !claim.pickup_at && isClaimOwner;
     const panelTone = isRejected
       ? 'bg-rose-50/80 border-rose-200'
       : isApproved
@@ -248,7 +253,7 @@ function TrackingContent() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#123356]">Lacak Klaim Barang Temuan</h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">Status tiket pengambilan barang temuanmu tercatat di sini.</p>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">{isClaimOwner ? 'Status tiket pengambilan barang temuanmu tercatat di sini.' : 'Status klaim pada barang temuan yang kamu laporkan.'}</p>
           </div>
           {claims.length > 1 && (
             <label className="text-xs text-slate-600 flex flex-wrap items-center gap-2">
@@ -294,7 +299,7 @@ function TrackingContent() {
                   {claim.pickup_at && <p className={`text-xs mt-1 font-semibold ${bodyTone}`}>Jadwal pengambilan: {formatDate(claim.pickup_at)}</p>}
                 </div>
               </div>
-              {isApproved && !isHandedOver && (
+              {isApproved && !isHandedOver && isClaimOwner && (
                 <div className="rounded-xl border border-slate-200 bg-white p-3 shrink-0">
                   <QRCode value={claim.ticket_code} size={112} />
                   <p className="mt-2 text-center text-[10px] font-semibold text-slate-500">Tunjukkan saat pengambilan</p>
