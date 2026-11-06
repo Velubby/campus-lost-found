@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import type { LostReport, FilterReportStatus } from '@/types/claims';
 import { REPORT_STATUS_LABELS, REPORT_STATUS_COLORS } from '@/types/claims';
-import { formatDate } from '@/lib/supabase/reports';
+import { formatDate } from '@/lib/date';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { ClaimCardSkeleton } from '@/components/ui/Skeleton';

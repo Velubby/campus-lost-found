@@ -24,9 +24,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { formatDate } from '@/lib/date';
 import {
   fetchUserReports,
-  formatDate,
   type UserReportRow,
   type ClaimRow,
   type ReportStatus,

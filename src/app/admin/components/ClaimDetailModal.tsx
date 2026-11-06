@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Check, X, RefreshCw } from 'lucide-react';
 import type { Claim } from '@/types/claims';
 import { STATUS_LABELS } from '@/types/claims';
-import { formatDate } from '@/lib/supabase/reports';
+import { formatDate } from '@/lib/date';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 

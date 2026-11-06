@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react';
 import { Search, PlusCircle, PackageSearch, FileText, Clock, ArrowRight } from 'lucide-react';
 import { getCurrentUser } from '@/lib/supabase/auth';
 import { createClient } from '@/lib/supabase/client';
-import { fetchLatestUserReport, formatDate, type UserReportRow } from '@/lib/supabase/reports';
+import { formatDate } from '@/lib/date';
+import { fetchLatestUserReport, type UserReportRow } from '@/lib/supabase/reports';
 
 export default function DashboardPage() {
   const [userName, setUserName] = useState('Pengguna kampus');

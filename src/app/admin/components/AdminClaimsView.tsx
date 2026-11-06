@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import type { Claim, FilterStatus, ClaimStats } from '@/types/claims';
 import { STATUS_LABELS } from '@/types/claims';
-import { formatDate } from '@/lib/supabase/reports';
+import { formatDate } from '@/lib/date';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Checkbox } from '@/components/ui/Checkbox';

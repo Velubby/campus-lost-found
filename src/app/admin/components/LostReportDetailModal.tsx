@@ -3,7 +3,7 @@
 import { ShieldAlert, ShieldCheck, CheckCircle2, MessageCircle, Check } from 'lucide-react';
 import type { LostReport } from '@/types/claims';
 import { REPORT_STATUS_LABELS, REPORT_STATUS_COLORS } from '@/types/claims';
-import { formatDate } from '@/lib/supabase/reports';
+import { formatDate } from '@/lib/date';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
